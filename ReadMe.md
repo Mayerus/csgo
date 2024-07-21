@@ -2,7 +2,7 @@
 ## A Computer Science library for Golang
 This library includes common data structures and algorithms
 
-### csgo/collection
+### csgo/collections
 Generic data structures
 * LinkedList (Node based)
 * Stack (slice based)
