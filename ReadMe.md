@@ -11,4 +11,4 @@ Generic data structures
 * Binary Search Tree (BST)
 * AVL tree (self-balancing BST)
 * Graph
-* Wighted Graph
+* Weighted Graph
