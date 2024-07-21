@@ -1,6 +1,6 @@
-package csgo
+package collections
 
-type AvlTree[T comparable] struct {
+type AvlTree[T Numeric] struct {
 	Root *TreeNode[T]
 }
 

@@ -1,4 +1,4 @@
-package csgo
+package collections
 
 import (
 	"fmt"

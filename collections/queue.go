@@ -1,4 +1,4 @@
-package csgo
+package collections
 
 import "errors"
 
@@ -7,9 +7,6 @@ type Queuer[T any] interface {
 	Pop() (T, error)
 	Count() int
 }
-
-// Double-ended queue, (incomplete)
-type deque[T comparable] []T
 
 type Queue[T comparable] []T
 
@@ -29,4 +26,8 @@ func (q *Queue[T]) Pop() (T, error) {
 
 func (q *Queue[T]) Count() int {
 	return len(*q)
+}
+
+func (q *Queue[T]) IsEmpty() bool {
+	return len(*q) == 0
 }

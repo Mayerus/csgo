@@ -1,181 +1,174 @@
-package csgo
+package collections
 
-import "golang.org/x/exp/constraints"
+import "io"
 
-type Numeric interface {
-	constraints.Float | constraints.Integer
+// Binary Search Tree
+type BSTree[T Numeric] struct {
+	Root *TreeNode[T]
 }
 
-type BSTree[T Numeric] struct {
-	Value       T
-	Left, Right *BSTree[T]
+func (t *BSTree[T]) String() string {
+	return t.Root.String()
+}
+
+func (t *BSTree[T]) Print(w io.Writer) {
+	t.Root.Print(w, 0, 'M')
 }
 
 func (t *BSTree[T]) Insert(value T) {
-	if value < t.Value {
-		if t.Left == nil {
-			t.Left = &BSTree[T]{value, nil, nil}
-			return
-		}
-		t.Left.Insert(value)
-	}
-	if value > t.Value {
-		if t.Right == nil {
-			t.Right = &BSTree[T]{value, nil, nil}
-			return
-		}
-		t.Right.Insert(value)
-	}
+	t.Root = t.Root.insert(value)
+}
 
+func (n *TreeNode[T]) insert(value T) *TreeNode[T] {
+	if n == nil {
+		return &TreeNode[T]{Value: value}
+	}
+	if value < n.Value {
+		if n.Left == nil {
+			n.Left = &TreeNode[T]{value, nil, nil}
+			return n
+		}
+		n.Left.insert(value)
+	}
+	if value > n.Value {
+		if n.Right == nil {
+			n.Right = &TreeNode[T]{value, nil, nil}
+			return n
+		}
+		n.Right.insert(value)
+	}
+	return n
 }
 
 func (t *BSTree[T]) Delete(value T) bool {
-	if t.Value == value {
-		// TODO: delete root
-	}
-	if t.Left != nil {
-		if t.Left.Value == value {
-			t.deleteLeft()
-		}
-	}
-	if t.Right != nil {
-		if t.Right.Value == value {
-			t.deleteRight()
-		}
+	node, parent := t.Search(value)
+	// node does not exist
+	if node == nil {
+		return false
 	}
 
-	var deleted bool
-	if value < t.Value {
-		if t.Left == nil {
-			return false
-		}
-		deleted = t.Left.Delete(value)
+	//node has 2 children (remove right subtree minLeaf then )
+	if node.HasLeft() && node.HasRight() {
+		t.deleteBiChild(node)
+		return true
 	}
-	if value > t.Value {
-		if t.Right == nil {
-			return false
-		}
-		deleted = t.Right.Delete(value)
-	}
-	return deleted
-}
 
-func (t *BSTree[T]) deleteLeft() bool {
-	if t.Left.isLeaf() {
-		t.Left = nil
+	defer node.Dispose()
+	// node has only left child
+	if node.HasLeft() {
+		t.deleteLeftChild(node, parent)
 		return true
 	}
-	deletedNode := t.Left
-	if t.Left.Left != nil && t.Left.Right == nil {
-		t.Left = t.Left.Left
-		deletedNode.Left = nil
+	// node has only right child
+	if node.HasRight() {
+		t.deleteRightChild(node, parent)
 		return true
 	}
-	if t.Left.Left == nil && t.Left.Right != nil {
-		t.Left = t.Left.Right
-		deletedNode.Right = nil
-		return true
-	}
-	// root has 2 children
-	t.rebaseMin()
+	// node is leaf
+	t.deleteLeaf(node, parent)
 	return true
 }
 
-func (t *BSTree[T]) deleteRight() bool {
-	if t.Right.isLeaf() {
-		t.Right = nil
-		return true
+func (t *BSTree[T]) deleteBiChild(node *TreeNode[T]) {
+	minLeaf, minParent := node.Right.Min()
+	// remove minLeaf which must be a left child
+	if minParent != nil {
+		minParent.Left = nil
 	}
-	deletedNode := t.Right
-	if t.Right.Left != nil && t.Right.Right == nil {
-		t.Right = t.Right.Left
-		deletedNode.Left = nil
-		return true
-	}
-	if t.Right.Left == nil && t.Right.Right != nil {
-		t.Right = t.Right.Right
-		deletedNode.Right = nil
-		return true
-	}
-	// root has 2 children
-	t.rebaseMin()
-	return true
+	// By overriding the node value using minLeaf.Value
+	//we perform an action which is equivalent to the nodes deletion.
+	node.Value = minLeaf.Value
 }
 
-func (t *BSTree[T]) rebaseMin() {
-	if t.Right.Left == nil {
-		oldRight := t.Right
-		t.Value = oldRight.Value
-		t.Right = oldRight.Right
-		oldRight.Right = nil
+func (t *BSTree[T]) deleteLeftChild(node, parent *TreeNode[T]) {
+	// delete root node with left child
+	if parent == nil {
+		t.Root = node.Left
 		return
 	}
-	min := t.Right.deleteMin()
-	t.Value = min
+	if parent.Left == node {
+		parent.Left = node.Left
+	}
+	parent.Right = node.Left
 }
 
-func (t *BSTree[T]) rebaseMax() {
-	if t.Left.Right == nil {
-		oldLeft := t.Left
-		t.Value = oldLeft.Value
-		t.Left = oldLeft.Left
-		oldLeft.Left = nil
+func (t *BSTree[T]) deleteRightChild(node, parent *TreeNode[T]) {
+	// delete root node with left child
+	if parent == nil {
+		t.Root = node.Right
 		return
 	}
-	max := t.Left.deleteMax()
-	t.Value = max
+	if parent.Left == node {
+		parent.Left = node.Right
+	}
+	parent.Right = node.Right
 }
 
-func (t *BSTree[T]) deleteMin() T {
-	if t.Left.Left == nil {
-		min := t.Left.Value
-		// reatach Min's right
-		if t.Left.Right != nil {
-			t.Left = t.Left.Right
-			return min
-		}
-		t.Left = nil
-		return min
+func (t *BSTree[T]) deleteLeaf(node, parent *TreeNode[T]) {
+	// node is leaf
+	// delete root leaf
+	if parent == nil {
+		t.Root = nil
+		return
 	}
-	return t.Left.deleteMin()
+	// delete non root leaf
+	if parent.Left == node {
+		parent.Left = nil
+	}
+	parent.Right = nil
 }
 
-func (t *BSTree[T]) deleteMax() T {
-	if t.Right.Right == nil {
-		max := t.Right.Value
-		// reatach Max's left
-		if t.Right.Left != nil {
-			t.Right = t.Right.Left
-			return max
-		}
-		t.Right = nil
-		return max
-	}
-	return t.Right.deleteMax()
+func (n *TreeNode[T]) Min() (min, parent *TreeNode[T]) {
+	return n.min(parent), parent
 }
 
-func (t *BSTree[T]) isLeaf() bool {
-	return t.Left == nil && t.Right == nil
+func (n *TreeNode[T]) min(parent *TreeNode[T]) *TreeNode[T] {
+	if n.Left != nil {
+		parent = n
+		n.min(parent)
+	}
+	return n
 }
 
-func (t *BSTree[T]) Search(value T) bool {
-	if value == t.Value {
-		return true
+func (n *TreeNode[T]) Max() *TreeNode[T] {
+	if n == nil {
+		return nil
+	}
+	return n.Right.Max()
+}
+
+func (t *BSTree[T]) ConSearch(value T, ch chan *TreeNode[T]) {
+	conSearch(t.Root, value, ch)
+	close(ch)
+}
+
+func conSearch[T Numeric](n *TreeNode[T], value T, ch chan *TreeNode[T]) {
+	if n == nil {
+		return
+	}
+	if n.Value == value {
+		ch <- n
+		return
+	}
+	conSearch(n.Left, value, ch)
+	conSearch(n.Right, value, ch)
+}
+
+func (t *BSTree[T]) Search(value T) (node, parent *TreeNode[T]) {
+	node, parent = t.Root.search(value, parent)
+	return
+}
+
+func (n *TreeNode[T]) search(value T, recurse_parent *TreeNode[T]) (node, parent *TreeNode[T]) {
+	if n == nil {
+		return nil, nil
 	}
 
-	var leftSearch, rightSearch bool
-	if value < t.Value {
-		if t.Left == nil {
-			return false
-		}
-		leftSearch = t.Left.Search(value)
+	if value < n.Value {
+		n.Left.search(value, n)
 	}
-	if value > t.Value {
-		if t.Right == nil {
-			return false
-		}
-		rightSearch = t.Right.Search(value)
+	if value > n.Value {
+		n.Right.search(value, n)
 	}
-
-	return leftSearch || rightSearch
+	return n, recurse_parent
 }
