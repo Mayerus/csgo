@@ -29,8 +29,9 @@ func (t *BSTree[T]) Insert(value T) {
 		t.Root = node
 		return
 	}
-	if value < iterator.Parent.Value {
+	if value < iteratorParent.Value {
 		iteratorParent.Left = node
+		return
 	}
 	iteratorParent.Right = node
 }
@@ -47,11 +48,12 @@ func (t *BSTree[T]) Delete(value T) bool {
 	}
 	successor := deleted.Successor()
 	if successor.Parent != deleted {
-		t.shiftNodes(successor, successor.Parent)
+		t.shiftNodes(successor, successor.Right)
 		successor.Right = deleted.Right
 		successor.Right.Parent = successor
+		return true
 	}
-	t.shiftNodes(successor, successor.Parent)
+	t.shiftNodes(deleted, successor)
 	successor.Left = deleted.Left
 	successor.Left.Parent = successor
 	return true
@@ -73,7 +75,6 @@ func (t *BSTree[T]) shiftNodes(original, successor *TreeNode[T]) {
 	}
 	// if a right-child is replaced
 	original.Parent.Right = successor
-
 }
 
 func (n *TreeNode[T]) Min() (node *TreeNode[T]) {
