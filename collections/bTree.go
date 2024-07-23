@@ -1,8 +1,8 @@
 package collections
 
 import (
+	"bytes"
 	"fmt"
-	"io"
 
 	"golang.org/x/exp/constraints"
 )
@@ -12,38 +12,54 @@ type Numeric interface {
 }
 
 type TreeNode[T Numeric] struct {
-	Value T
-	Left  *TreeNode[T]
-	Right *TreeNode[T]
+	Value               T
+	Left, Right, Parent *TreeNode[T]
 }
 
-func (n *TreeNode[T]) String() string {
-	if n == nil {
-		return "[]"
-	}
-	s := ""
-	if n.Left != nil {
-		s += n.Left.String() + " "
-	}
-	s += fmt.Sprintf("%v", n.Value)
-	if n.Right != nil {
-		s += " " + n.Right.String()
-	}
-	return fmt.Sprintf("[%s]", s)
-
+func (node *TreeNode[T]) String() string {
+	var buffer bytes.Buffer
+	node.string(&buffer, 0, 'M')
+	return buffer.String()
 }
 
-func (node *TreeNode[T]) Print(w io.Writer, spaces int, ch rune) {
+func (node *TreeNode[T]) string(buffer *bytes.Buffer, spaces int, ch rune) {
 	if node == nil {
 		return
 	}
-	fmt.Println("test")
 	for i := 0; i < spaces; i++ {
-		fmt.Fprint(w, " ")
+		buffer.WriteByte(' ')
 	}
-	fmt.Fprintf(w, "%c:%v\n", ch, node.Value)
-	node.Left.Print(w, spaces+2, 'L')
-	node.Right.Print(w, spaces+2, 'R')
+	fmt.Fprintf(buffer, "%c:%v\n", ch, node.Value)
+	node.Left.string(buffer, spaces+2, 'L')
+	node.Right.string(buffer, spaces+2, 'R')
+}
+
+func (t *TreeNode[T]) InorderTraversal() {
+	if t == nil {
+		return
+	}
+	t.Left.InorderTraversal()
+	// visit node
+	t.Right.InorderTraversal()
+
+}
+
+func (t *TreeNode[T]) PreorderTraversal() {
+	if t == nil {
+		return
+	}
+	// visit node
+	t.Left.PreorderTraversal()
+	t.Right.PreorderTraversal()
+}
+
+func (t *TreeNode[T]) PostorderTraversal() {
+	if t == nil {
+		return
+	}
+	t.Left.PostorderTraversal()
+	t.Right.PostorderTraversal()
+	// visit node
 }
 
 func (n *TreeNode[T]) IsLeaf() bool {
@@ -61,4 +77,5 @@ func (n *TreeNode[T]) HasRight() bool {
 func (n *TreeNode[T]) Dispose() {
 	n.Right = nil
 	n.Left = nil
+	n.Parent = nil
 }

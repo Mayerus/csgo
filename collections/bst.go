@@ -1,140 +1,136 @@
 package collections
 
-import "io"
-
 // Binary Search Tree
 type BSTree[T Numeric] struct {
 	Root *TreeNode[T]
+}
+
+type searchResult[T Numeric] struct {
+	Node, Parent *TreeNode[T]
 }
 
 func (t *BSTree[T]) String() string {
 	return t.Root.String()
 }
 
-func (t *BSTree[T]) Print(w io.Writer) {
-	t.Root.Print(w, 0, 'M')
-}
-
 func (t *BSTree[T]) Insert(value T) {
-	t.Root = t.Root.insert(value)
-}
-
-func (n *TreeNode[T]) insert(value T) *TreeNode[T] {
-	if n == nil {
-		return &TreeNode[T]{Value: value}
-	}
-	if value < n.Value {
-		if n.Left == nil {
-			n.Left = &TreeNode[T]{value, nil, nil}
-			return n
+	var iteratorParent *TreeNode[T]
+	iterator := t.Root
+	for iterator != nil {
+		iteratorParent = iterator
+		if value < iterator.Value {
+			iterator = iterator.Left
+			continue
 		}
-		n.Left.insert(value)
+		iterator = iterator.Right
 	}
-	if value > n.Value {
-		if n.Right == nil {
-			n.Right = &TreeNode[T]{value, nil, nil}
-			return n
-		}
-		n.Right.insert(value)
+	node := &TreeNode[T]{value, nil, nil, iteratorParent}
+	if iteratorParent == nil {
+		t.Root = node
+		return
 	}
-	return n
+	if value < iterator.Parent.Value {
+		iteratorParent.Left = node
+	}
+	iteratorParent.Right = node
 }
 
 func (t *BSTree[T]) Delete(value T) bool {
-	node, parent := t.Search(value)
-	// node does not exist
-	if node == nil {
-		return false
-	}
-
-	//node has 2 children (remove right subtree minLeaf then )
-	if node.HasLeft() && node.HasRight() {
-		t.deleteBiChild(node)
+	deleted := t.Search(value)
+	if deleted.Left == nil {
+		t.shiftNodes(deleted, deleted.Right)
 		return true
 	}
-
-	defer node.Dispose()
-	// node has only left child
-	if node.HasLeft() {
-		t.deleteLeftChild(node, parent)
+	if deleted.Right == nil {
+		t.shiftNodes(deleted, deleted.Left)
 		return true
 	}
-	// node has only right child
-	if node.HasRight() {
-		t.deleteRightChild(node, parent)
-		return true
+	successor := deleted.Successor()
+	if successor.Parent != deleted {
+		t.shiftNodes(successor, successor.Parent)
+		successor.Right = deleted.Right
+		successor.Right.Parent = successor
 	}
-	// node is leaf
-	t.deleteLeaf(node, parent)
+	t.shiftNodes(successor, successor.Parent)
+	successor.Left = deleted.Left
+	successor.Left.Parent = successor
 	return true
 }
 
-func (t *BSTree[T]) deleteBiChild(node *TreeNode[T]) {
-	minLeaf, minParent := node.Right.Min()
-	// remove minLeaf which must be a left child
-	if minParent != nil {
-		minParent.Left = nil
+func (t *BSTree[T]) shiftNodes(original, successor *TreeNode[T]) {
+	defer original.Dispose()
+	if successor != nil {
+		successor.Parent = original.Parent
 	}
-	// By overriding the node value using minLeaf.Value
-	//we perform an action which is equivalent to the nodes deletion.
-	node.Value = minLeaf.Value
-}
-
-func (t *BSTree[T]) deleteLeftChild(node, parent *TreeNode[T]) {
-	// delete root node with left child
-	if parent == nil {
-		t.Root = node.Left
+	if original.Parent == nil {
+		t.Root = successor
 		return
 	}
-	if parent.Left == node {
-		parent.Left = node.Left
-	}
-	parent.Right = node.Left
-}
-
-func (t *BSTree[T]) deleteRightChild(node, parent *TreeNode[T]) {
-	// delete root node with left child
-	if parent == nil {
-		t.Root = node.Right
+	if original == original.Parent.Left {
+		// if a left-child is replaced
+		original.Parent.Left = successor
 		return
 	}
-	if parent.Left == node {
-		parent.Left = node.Right
-	}
-	parent.Right = node.Right
+	// if a right-child is replaced
+	original.Parent.Right = successor
+
 }
 
-func (t *BSTree[T]) deleteLeaf(node, parent *TreeNode[T]) {
-	// node is leaf
-	// delete root leaf
-	if parent == nil {
-		t.Root = nil
-		return
+func (n *TreeNode[T]) Min() (node *TreeNode[T]) {
+	node = n
+	for node.Left != nil {
+		node = node.Left
 	}
-	// delete non root leaf
-	if parent.Left == node {
-		parent.Left = nil
-	}
-	parent.Right = nil
+	return
 }
 
-func (n *TreeNode[T]) Min() (min, parent *TreeNode[T]) {
-	return n.min(parent), parent
+func (n *TreeNode[T]) Max() (node *TreeNode[T]) {
+	node = n
+	for node.Right != nil {
+		node = node.Right
+	}
+	return
 }
 
-func (n *TreeNode[T]) min(parent *TreeNode[T]) *TreeNode[T] {
-	if n.Left != nil {
-		parent = n
-		n.min(parent)
+// The successor of node n is the node with the smallest value greater than n's.
+func (n *TreeNode[T]) Successor() *TreeNode[T] {
+	if n.Right != nil {
+		return n.Right.Min()
 	}
-	return n
+	node := n
+	successor := n.Parent
+	for successor != nil && node == successor.Right {
+		node = successor
+		successor = successor.Parent
+	}
+	return successor
 }
 
-func (n *TreeNode[T]) Max() *TreeNode[T] {
-	if n == nil {
-		return nil
+// The predecessor of node n is the node with the largest value smaller than n's.
+func (n *TreeNode[T]) Predecessor() *TreeNode[T] {
+	if n.Left == nil {
+		return n.Left.Max()
 	}
-	return n.Right.Max()
+	node := n
+	predecessor := n.Parent
+	for predecessor != nil && node == n.Left {
+		node = predecessor
+		predecessor = predecessor.Parent
+	}
+	return predecessor
+}
+
+// Iterative binary tree search (Considered more efficient on most machines)
+func (t *BSTree[T]) Search(value T) (node *TreeNode[T]) {
+	node = t.Root
+	for node != nil && value != node.Value {
+		if value == node.Value {
+			node = node.Left
+			continue
+		}
+		node = node.Right
+	}
+	return
 }
 
 func (t *BSTree[T]) ConSearch(value T, ch chan *TreeNode[T]) {
@@ -154,21 +150,14 @@ func conSearch[T Numeric](n *TreeNode[T], value T, ch chan *TreeNode[T]) {
 	conSearch(n.Right, value, ch)
 }
 
-func (t *BSTree[T]) Search(value T) (node, parent *TreeNode[T]) {
-	node, parent = t.Root.search(value, parent)
-	return
+func (t *BSTree[T]) InorderTraversal() {
+	t.Root.InorderTraversal()
 }
 
-func (n *TreeNode[T]) search(value T, recurse_parent *TreeNode[T]) (node, parent *TreeNode[T]) {
-	if n == nil {
-		return nil, nil
-	}
+func (t *BSTree[T]) PreorderTraversal() {
+	t.Root.PreorderTraversal()
+}
 
-	if value < n.Value {
-		n.Left.search(value, n)
-	}
-	if value > n.Value {
-		n.Right.search(value, n)
-	}
-	return n, recurse_parent
+func (t *BSTree[T]) PostorderTraversal() {
+	t.Root.PostorderTraversal()
 }
