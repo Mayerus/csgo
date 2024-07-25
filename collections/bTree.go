@@ -29,7 +29,12 @@ func (node *TreeNode[T]) string(buffer *bytes.Buffer, spaces int, ch rune) {
 	for i := 0; i < spaces; i++ {
 		buffer.WriteByte(' ')
 	}
-	fmt.Fprintf(buffer, "%c:%v\n", ch, node.Value)
+	if node.Parent != nil {
+		fmt.Fprintf(buffer, "%c:%v \tP:%v\n", ch, node.Value, node.Parent.Value)
+	} else {
+		fmt.Fprintf(buffer, "%c:%v \tP:nil\n", ch, node.Value)
+	}
+
 	node.Left.string(buffer, spaces+2, 'L')
 	node.Right.string(buffer, spaces+2, 'R')
 }

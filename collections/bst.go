@@ -38,6 +38,7 @@ func (t *BSTree[T]) Insert(value T) {
 
 func (t *BSTree[T]) Delete(value T) bool {
 	deleted := t.Search(value)
+	//defer deleted.Dispose()
 	if deleted.Left == nil {
 		t.shiftNodes(deleted, deleted.Right)
 		return true
@@ -60,21 +61,20 @@ func (t *BSTree[T]) Delete(value T) bool {
 }
 
 func (t *BSTree[T]) shiftNodes(original, successor *TreeNode[T]) {
-	defer original.Dispose()
+	if original.Parent == nil {
+		t.Root = successor
+		//return
+	} else if original == original.Parent.Left {
+		// if a left-child is replaced
+		original.Parent.Left = successor
+		//return
+	} else {
+		// if a right-child is replaced
+		original.Parent.Right = successor
+	}
 	if successor != nil {
 		successor.Parent = original.Parent
 	}
-	if original.Parent == nil {
-		t.Root = successor
-		return
-	}
-	if original == original.Parent.Left {
-		// if a left-child is replaced
-		original.Parent.Left = successor
-		return
-	}
-	// if a right-child is replaced
-	original.Parent.Right = successor
 }
 
 func (n *TreeNode[T]) Min() (node *TreeNode[T]) {
@@ -123,9 +123,13 @@ func (n *TreeNode[T]) Predecessor() *TreeNode[T] {
 
 // Iterative binary tree search (Considered more efficient on most machines)
 func (t *BSTree[T]) Search(value T) (node *TreeNode[T]) {
-	node = t.Root
+	return t.Root.Search(value)
+}
+
+func (t *TreeNode[T]) Search(value T) (node *TreeNode[T]) {
+	node = t
 	for node != nil && value != node.Value {
-		if value == node.Value {
+		if value < node.Value {
 			node = node.Left
 			continue
 		}
