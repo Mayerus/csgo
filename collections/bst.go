@@ -2,20 +2,16 @@ package collections
 
 // Binary Search Tree
 type BSTree[T Numeric] struct {
-	Root *TreeNode[T]
-}
-
-type searchResult[T Numeric] struct {
-	Node, Parent *TreeNode[T]
+	root *TreeNode[T]
 }
 
 func (t *BSTree[T]) String() string {
-	return t.Root.String()
+	return t.root.String()
 }
 
 func (t *BSTree[T]) Insert(value T) {
 	var iteratorParent *TreeNode[T]
-	iterator := t.Root
+	iterator := t.root
 	for iterator != nil {
 		iteratorParent = iterator
 		if value < iterator.Value {
@@ -26,7 +22,7 @@ func (t *BSTree[T]) Insert(value T) {
 	}
 	node := &TreeNode[T]{value, nil, nil, iteratorParent}
 	if iteratorParent == nil {
-		t.Root = node
+		t.root = node
 		return
 	}
 	if value < iteratorParent.Value {
@@ -62,7 +58,7 @@ func (t *BSTree[T]) Delete(value T) bool {
 
 func (t *BSTree[T]) shiftNodes(original, successor *TreeNode[T]) {
 	if original.Parent == nil {
-		t.Root = successor
+		t.root = successor
 		//return
 	} else if original == original.Parent.Left {
 		// if a left-child is replaced
@@ -123,7 +119,7 @@ func (n *TreeNode[T]) Predecessor() *TreeNode[T] {
 
 // Iterative binary tree search (Considered more efficient on most machines)
 func (t *BSTree[T]) Search(value T) (node *TreeNode[T]) {
-	return t.Root.Search(value)
+	return t.root.Search(value)
 }
 
 func (t *TreeNode[T]) Search(value T) (node *TreeNode[T]) {
@@ -139,7 +135,7 @@ func (t *TreeNode[T]) Search(value T) (node *TreeNode[T]) {
 }
 
 func (t *BSTree[T]) ConSearch(value T, ch chan *TreeNode[T]) {
-	conSearch(t.Root, value, ch)
+	conSearch(t.root, value, ch)
 	close(ch)
 }
 
@@ -156,13 +152,13 @@ func conSearch[T Numeric](n *TreeNode[T], value T, ch chan *TreeNode[T]) {
 }
 
 func (t *BSTree[T]) InorderTraversal() {
-	t.Root.InorderTraversal()
+	t.root.InorderTraversal()
 }
 
 func (t *BSTree[T]) PreorderTraversal() {
-	t.Root.PreorderTraversal()
+	t.root.PreorderTraversal()
 }
 
 func (t *BSTree[T]) PostorderTraversal() {
-	t.Root.PostorderTraversal()
+	t.root.PostorderTraversal()
 }

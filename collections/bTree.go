@@ -8,6 +8,7 @@ import (
 )
 
 type Numeric interface {
+	//constraints.Ordered
 	constraints.Float | constraints.Integer
 }
 

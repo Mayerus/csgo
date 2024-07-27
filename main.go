@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	bst := &collections.BSTree[int]{Root: nil}
+	bst := &collections.BSTree[int]{}
 	bst.Insert(2)
 	bst.Insert(-1)
 	bst.Insert(1)
