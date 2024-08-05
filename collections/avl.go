@@ -30,7 +30,7 @@ func (t *AvlTree[T]) Search(value T) (node *AvlNode[T]) {
 }
 
 func (t *AvlTree[T]) Delete() {
-
+	// TODO:
 }
 
 func (t *AvlTree[T]) Insert(value T) {
@@ -206,11 +206,84 @@ func (root *AvlNode[T]) rotateRight() (pivot *AvlNode[T]) {
 }
 
 func (root *AvlNode[T]) rotateLeftRight() (pivot *AvlNode[T]) {
-	// TODO:
+	// root is by 2 higher than its sibling
+	pivotRoot, pivot := root.Right, root.Right.Left
+	// 1 - Reorder nodes
+	pivot.Parent = root.Parent
+	// y is by 1 higher than sibling
+	t2 := pivot.Left
+	pivotRoot.Right = t2
+	if t2 != nil {
+		t2.Parent = pivotRoot
+	}
+	pivot.Left = pivotRoot
+	pivotRoot.Parent = pivot
+
+	t3 := pivot.Right
+	root.Left = t3
+	if t3 != nil {
+		t3.Parent = root
+	}
+	pivot.Right = root
+	root.Parent = pivot
+
+	// 2 - Revaluate balance factors
+	if pivot.balanceFactor == 0 {
+		root.balanceFactor = 0
+		pivotRoot.balanceFactor = 0
+	} else if pivot.balanceFactor > 0 {
+		// t3 was higher
+		root.balanceFactor = -1
+		pivotRoot.balanceFactor = 0
+	} else {
+		// t2 was higher
+		root.balanceFactor = 0
+		pivotRoot.balanceFactor = 1
+	}
+	pivot.balanceFactor = 0
+	return
 }
 
+// Performs a right-left rotation on (root *AvlNode[T])'s subtree,
+// which makes (pivot *AvlNode[T]) the new subtree root
 func (root *AvlNode[T]) rotateRightLeft() (pivot *AvlNode[T]) {
-	// TODO:
+	// root is by 2 higher than its sibling
+	pivotRoot, pivot := root.Right, root.Right.Left
+	// 1 - Reorder nodes
+	pivot.Parent = root.Parent
+	// y is by 1 higher than sibling
+	t2 := pivot.Left
+	root.Right = t2
+	if t2 != nil {
+		t2.Parent = root
+	}
+	pivot.Left = root
+	root.Parent = pivot
+
+	t3 := pivot.Right
+	pivotRoot.Left = t3
+	if t3 != nil {
+		t3.Parent = pivotRoot
+	}
+	pivot.Right = pivotRoot
+	pivotRoot.Parent = pivot
+
+	// 2 - Revaluate balance factors
+	// 1st case BF(y) == 0
+	if pivot.balanceFactor == 0 {
+		root.balanceFactor = 0
+		pivotRoot.balanceFactor = 0
+	} else if pivot.balanceFactor > 0 {
+		// t3 was higher
+		root.balanceFactor = 0
+		pivotRoot.balanceFactor = -1
+	} else {
+		// t2 was higher
+		root.balanceFactor = 1
+		pivotRoot.balanceFactor = 0
+	}
+	pivot.balanceFactor = 0
+	return
 }
 
 func (t *AvlTree[T]) String() string {
@@ -231,9 +304,9 @@ func (node *AvlNode[T]) string(buffer *bytes.Buffer, spaces int, ch rune) {
 		buffer.WriteByte(' ')
 	}
 	if node.Parent != nil {
-		fmt.Fprintf(buffer, "%c:%v \tP:%v\n", ch, node.Value, node.Parent.Value)
+		fmt.Fprintf(buffer, "%c:%v \tP:%v\tBF:%v\n", ch, node.Value, node.Parent.Value, node.balanceFactor)
 	} else {
-		fmt.Fprintf(buffer, "%c:%v \tP:nil\n", ch, node.Value)
+		fmt.Fprintf(buffer, "%c:%v \tP:nil\tBF:%v\n", ch, node.Value, node.balanceFactor)
 	}
 
 	node.Left.string(buffer, spaces+2, 'L')
