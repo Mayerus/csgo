@@ -5,9 +5,11 @@
     "version": "0.2.0",
     "configurations": [
         {
-          // ...
-          "program": "${workspaceRoot}",
-          // ...
+          "name": "Launch Package",
+          "type": "go",
+          "request": "launch",
+          "mode": "auto",
+          "program": "${workspaceFolder}"
         }
-      ]
+    ]
 }

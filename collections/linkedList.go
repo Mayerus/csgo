@@ -1,6 +1,9 @@
 package collections
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 type Node[T comparable] struct {
 	data T
@@ -48,6 +51,20 @@ func (l *LinkedList[T]) AddAt(index int, data T) error {
 func (l *LinkedList[T]) Insert(data T) {
 	l.head = &Node[T]{data, l.head}
 }
+
+// Add value at the start of the list
+//func (l *LinkedList[T]) InsertSorted(data T) {
+//	node := &Node[T]{data, nil}
+//	if l.head == nil {
+//		l.head = node
+//		return
+//	}
+//	var iterator *Node[T] = l.head
+//	for ; iterator.next != nil && iterator.data > data; iterator = iterator.next {
+//	}
+//	iterator.next = node
+//
+//}
 
 // Delete value at the end of the list
 func (l *LinkedList[T]) Delete() error {
@@ -103,4 +120,13 @@ func (l *LinkedList[T]) Count(data T) int {
 		count++
 	}
 	return count
+}
+
+func (l *LinkedList[T]) String() string {
+	output := "[" + fmt.Sprint(l.head.data)
+	node := l.head.next
+	for ; node != nil; node = node.next {
+		output = output + ", " + fmt.Sprint(node.data)
+	}
+	return output + "]"
 }

@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-
+	"math/rand"
 	"mayerus/csgo/collections"
 )
 
@@ -22,31 +22,23 @@ func main() {
 	fmt.Println(bst)
 
 	avl := &collections.AvlTree[int]{}
-	fmt.Println(avl)
-	avl.Insert(2)
-	fmt.Println(avl)
-	avl.Insert(-1)
-	fmt.Println(avl)
-	avl.Insert(1)
-	fmt.Println(avl)
-	avl.Insert(-3)
-	fmt.Println(avl)
-	avl.Insert(5)
-	fmt.Println(avl)
-	avl.Insert(3)
-	fmt.Println("avl")
-	avl.Insert(4)
-	avl.Insert(6)
-	avl.Insert(7)
-	avl.Insert(8)
-	avl.Insert(9)
-	fmt.Println(avl)
 
+	k := 1
+	l := 100
+	m := 100
+	for i := 0; i < k; i++ {
+		for j := 0; j < l; j++ {
+			value := rand.Intn(m) - m/2
+			avl.Insert(value)
+		}
+	}
+
+	fmt.Println(avl)
 	return
-	bst.Delete(5)
-	fmt.Println(bst)
-	bst.Delete(-3)
-	fmt.Println(bst)
+	//bst.Delete(5)
+	//fmt.Println(bst)
+	//bst.Delete(-3)
+	//fmt.Println(bst)
 	//bst.Delete(-3)
 	//fmt.Println(bst)
 }
