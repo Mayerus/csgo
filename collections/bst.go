@@ -32,8 +32,14 @@ func (t *BSTree[T]) Insert(value T) {
 	iteratorParent.Right = node
 }
 
+// Removes the node with the corresponding value from the tree (if exists).
+// Returns true if successfuly deleted,
+// false if the value has not been found in the tree
 func (t *BSTree[T]) Delete(value T) bool {
 	deleted := t.Search(value)
+	if deleted == nil {
+		return false
+	}
 	//defer deleted.Dispose()
 	if deleted.Left == nil {
 		t.shiftNodes(deleted, deleted.Right)
@@ -48,7 +54,6 @@ func (t *BSTree[T]) Delete(value T) bool {
 		t.shiftNodes(successor, successor.Right)
 		successor.Right = deleted.Right
 		successor.Right.Parent = successor
-		return true
 	}
 	t.shiftNodes(deleted, successor)
 	successor.Left = deleted.Left

@@ -3,18 +3,40 @@ package collections
 import (
 	"bytes"
 	"fmt"
+	"sync"
 )
 
 type AvlTree[T Numeric] struct {
 	root *AvlNode[T]
 }
 
-// balanceFactor = left height = right height
 type AvlNode[T Numeric] struct {
 	Value         T
 	Left, Right   *AvlNode[T]
 	Parent        *AvlNode[T]
-	balanceFactor int
+	balanceFactor int8
+}
+
+type safeBuffer struct {
+	bytes.Buffer
+	mu sync.Mutex
+}
+
+func (n *AvlNode[T]) Dispose() {
+	n.Parent = nil
+	n.Left = nil
+	n.Right = nil
+}
+
+func (adopter *AvlNode[T]) Adopt(giver *AvlNode[T]) {
+	adopter.Left = giver.Left
+	if adopter.Left != nil {
+		adopter.Left.Parent = adopter
+	}
+	adopter.Right = giver.Right
+	if adopter.Right != nil {
+		adopter.Right.Parent = adopter
+	}
 }
 
 func (t *AvlTree[T]) Search(value T) (node *AvlNode[T]) {
@@ -29,20 +51,19 @@ func (t *AvlTree[T]) Search(value T) (node *AvlNode[T]) {
 	return
 }
 
-func (t *AvlTree[T]) Delete() {
-	// TODO:
+func (t *AvlTree[T]) Min() (node *AvlNode[T]) {
+	if t.root == nil {
+		return nil
+	}
+	return t.root.Min()
 }
 
-func (t *AvlTree[T]) Join() {
-	// TODO:
-}
-
-func (t *AvlTree[T]) Split() {
-	// TODO:
-}
-
-func (t *AvlTree[T]) Union() {
-	// TODO:
+func (n *AvlNode[T]) Min() (node *AvlNode[T]) {
+	node = n
+	for node.Left != nil {
+		node = node.Left
+	}
+	return
 }
 
 func (t AvlTree[T]) InsertList(values ...T) {
@@ -69,7 +90,7 @@ func (t *AvlTree[T]) Insert(value T) {
 	}
 
 	node := &AvlNode[T]{value, nil, nil, iteratorParent, 0}
-	defer t.balance(node)
+	defer t.retraceInsert(node)
 	if iteratorParent == nil {
 		t.root = node
 		return
@@ -81,33 +102,32 @@ func (t *AvlTree[T]) Insert(value T) {
 	iteratorParent.Right = node
 }
 
-func (t *AvlTree[T]) balance(inserted *AvlNode[T]) {
+func (t *AvlTree[T]) retraceInsert(inserted *AvlNode[T]) {
 	node := inserted
 	for parent := node.Parent; parent != nil; parent = node.Parent {
 		//var pivot *AvlNode[T]
 		if parent.Left == node {
-			if t.balanceLeftSubtree(parent, node) {
+			if t.balanceLeftSubtreeInsert(parent, node) {
 				break
 			}
 			node = parent
 			continue
 		}
-		if t.balanceRightSubtree(parent, node) {
+		if t.balanceRightSubtreeInsert(parent, node) {
 			break
 		}
 		node = parent
 	}
 }
 
-func (t *AvlTree[T]) balanceLeftSubtree(parent, node *AvlNode[T]) (quit bool) {
+func (t *AvlTree[T]) balanceLeftSubtreeInsert(parent, node *AvlNode[T]) (quit bool) {
 	if parent.balanceFactor < 0 {
 		// the newly inserted node balanced the subtree
 		parent.balanceFactor = 0
 		return true
 	}
 	if parent.balanceFactor == 0 {
-		parent.balanceFactor++
-		node = parent
+		parent.balanceFactor = 1
 		return false
 	}
 	var pivot *AvlNode[T]
@@ -116,25 +136,22 @@ func (t *AvlTree[T]) balanceLeftSubtree(parent, node *AvlNode[T]) (quit bool) {
 	if node.balanceFactor < 0 {
 		// right is heavy
 		pivot = parent.rotateLeftRight()
-		//t.setLeftSubtreeParent(pivot)
 		t.updateSubtreeParent(pivot)
 		return true
 	}
 	pivot = parent.rotateRight()
-	//t.trySettingRoot(pivot)
 	t.updateSubtreeParent(pivot)
 	return true
 }
 
-func (t *AvlTree[T]) balanceRightSubtree(parent, node *AvlNode[T]) (quit bool) {
+func (t *AvlTree[T]) balanceRightSubtreeInsert(parent, node *AvlNode[T]) (quit bool) {
 	if parent.balanceFactor > 0 {
 		//the newly inserted node balanced the subtree
 		parent.balanceFactor = 0
 		return true
 	}
 	if parent.balanceFactor == 0 {
-		parent.balanceFactor--
-		node = parent
+		parent.balanceFactor = -1
 		return false
 	}
 	var pivot *AvlNode[T]
@@ -143,7 +160,6 @@ func (t *AvlTree[T]) balanceRightSubtree(parent, node *AvlNode[T]) (quit bool) {
 	if node.balanceFactor > 0 {
 		// node is left heavy
 		pivot = parent.rotateRightLeft()
-		//t.setRightSubtreeParent(pivot)
 		t.updateSubtreeParent(pivot)
 		return true
 	}
@@ -152,10 +168,169 @@ func (t *AvlTree[T]) balanceRightSubtree(parent, node *AvlNode[T]) (quit bool) {
 	return true
 }
 
+func (t *AvlTree[T]) Delete(value T) bool {
+	// remove node
+	found, retraceNode := t.removeNode(value)
+	if !found {
+		return false
+	}
+	if retraceNode == nil {
+		return true
+	}
+
+	// retrace deletion
+	node := retraceNode
+
+	for parent := node.Parent; parent != nil; parent = parent.Parent {
+		// parent.balanceFactor has not yet been updated!
+		if parent.Left == node {
+			// the left child tree decreases
+			if t.balanceLeftSubtreeDelete(parent, node) {
+				break
+			}
+			node = parent
+			continue
+		}
+		// the right child tree decreases
+		if t.balanceRightSubtreeDelete(parent, node) {
+			break
+		}
+		node = parent
+	}
+	return true
+}
+
+func (t *AvlTree[T]) removeNode(value T) (found bool, retraceNode *AvlNode[T]) {
+	deleted := t.Search(value)
+	if deleted == nil {
+		return false, nil
+	}
+
+	found = true
+	retraceNode = deleted.Parent
+	defer deleted.Dispose()
+	if deleted.Left == nil {
+		t.shiftNodes(deleted, deleted.Right)
+		return
+	}
+	if deleted.Right == nil {
+		t.shiftNodes(deleted, deleted.Left)
+		return
+	}
+	successor := deleted.successor()
+	if successor.Parent != deleted {
+		t.shiftNodes(successor, successor.Right)
+		successor.Right = deleted.Right
+		successor.Right.Parent = successor
+	}
+	t.shiftNodes(deleted, successor)
+	successor.Left = deleted.Left
+	successor.Left.Parent = successor
+	return
+}
+
+// replaces references to (not from!) the original node with ones to the successor node.
+// Note: children of both original and successor are not modified!
+func (t *AvlTree[T]) shiftNodes(original, successor *AvlNode[T]) {
+	if successor != nil {
+		successor.Parent = original.Parent
+	}
+	if original.Parent == nil {
+		t.root = successor
+		return
+	}
+	if original == original.Parent.Left {
+		// if a left-child is replaced
+		original.Parent.Left = successor
+		return
+	}
+	// if a right-child is replaced
+	original.Parent.Right = successor
+}
+
+// The successor of node n is the node with the smallest value greater than n's.
+func (n *AvlNode[T]) successor() *AvlNode[T] {
+	if n.Right != nil {
+		return n.Right.Min()
+	}
+	node := n
+	successor := n.Parent
+	for successor != nil && node == successor.Right {
+		node = successor
+		successor = successor.Parent
+	}
+	return successor
+}
+
+func (t *AvlTree[T]) balanceLeftSubtreeDelete(parent, node *AvlNode[T]) (quit bool) {
+	if parent.balanceFactor == 0 {
+		// the height decrease balanced the node
+		parent.balanceFactor = -1
+		return true
+	}
+	if parent.balanceFactor > 0 {
+		// left is heavy
+		//parent.balanceFactor = 0
+		node.balanceFactor = 0
+		return false
+	}
+	//defer t.updateSubtreeParent(pivot, parent, subtreeParent)
+	// parent is right heavy
+	if parent.Right.balanceFactor > 0 {
+		// parent right chid is left heavy
+		pivot := parent.rotateRightLeft()
+		t.updateSubtreeParent(pivot)
+		return parent.balanceFactor == 0
+	}
+	pivot := parent.rotateLeft()
+	t.updateSubtreeParent(pivot)
+	return parent.balanceFactor == 0
+}
+
+func (t *AvlTree[T]) balanceRightSubtreeDelete(parent, node *AvlNode[T]) (quit bool) {
+	if parent.balanceFactor == 0 {
+		// the height decrease balanced the node
+		parent.balanceFactor = 1
+		return true
+	}
+	if parent.balanceFactor < 0 {
+		// left is heavy
+		//parent.balanceFactor = 0
+		node.balanceFactor = 0
+		return false
+	}
+
+	//defer t.updateSubtreeParent(pivot, parent, subtreeParent)
+	// parent is left heavy
+	if parent.Left.balanceFactor < 0 {
+		// parent left child is right heavy
+		pivot := parent.rotateLeftRight()
+		t.updateSubtreeParent(pivot)
+		return parent.balanceFactor == 0
+	}
+	pivot := parent.rotateRight()
+	t.updateSubtreeParent(pivot)
+	return parent.balanceFactor == 0
+}
+
+func (t *AvlTree[T]) Join() {
+	// TODO:
+}
+
+func (t *AvlTree[T]) Split() {
+	// TODO:
+}
+
+func (t *AvlTree[T]) Union() {
+	// TODO:
+}
+
 // Sets pivot as the tree root if pivot.Parent is nil
 func (t *AvlTree[T]) updateSubtreeParent(pivot *AvlNode[T]) {
+	//if pivot.Parent == nil {
 	if pivot.Parent == nil {
 		t.root = pivot
+		return
 	}
 }
 
@@ -173,7 +348,6 @@ func (pivot *AvlNode[T]) setPivotParent(root *AvlNode[T]) {
 // Performs a left rotation on (root *AvlNode[T])'s subtree,
 // which makes (pivot *AvlNode[T]) the new subtree root
 func (root *AvlNode[T]) rotateLeft() (pivot *AvlNode[T]) {
-	// Todo: balance
 	pivot = root.Right
 	innerChild := pivot.Left
 
@@ -187,7 +361,6 @@ func (root *AvlNode[T]) rotateLeft() (pivot *AvlNode[T]) {
 	pivot.Left = root
 	pivot.setPivotParent(root)
 
-	// TODO: balance factor
 	if pivot.balanceFactor == 0 {
 		root.balanceFactor = 1
 		pivot.balanceFactor = -1
@@ -196,23 +369,13 @@ func (root *AvlNode[T]) rotateLeft() (pivot *AvlNode[T]) {
 		pivot.balanceFactor = 0
 	}
 
-	//subtreeParent := root.Parent
 	root.Parent = pivot
-	//if subtreeParent == nil {
-	//	return
-	//}
-	//if subtreeParent.Left == root {
-	//	subtreeParent.Left = pivot
-	//	return
-	//}
-	//subtreeParent.Right = pivot
 	return
 }
 
 // Performs a right rotation on (root *AvlNode[T])'s subtree,
 // which makes (pivot *AvlNode[T]) the new subtree root
 func (root *AvlNode[T]) rotateRight() (pivot *AvlNode[T]) {
-	// Todo: balance
 	pivot = root.Left
 	innerChild := pivot.Right
 
@@ -224,10 +387,8 @@ func (root *AvlNode[T]) rotateRight() (pivot *AvlNode[T]) {
 
 	// set root as pivot's right child
 	pivot.Right = root
-	//pivot.Parent = root.Parent
 	pivot.setPivotParent(root)
 
-	// TODO: balance factor
 	if pivot.balanceFactor == 0 {
 		root.balanceFactor = 1
 		pivot.balanceFactor = -1
@@ -236,16 +397,7 @@ func (root *AvlNode[T]) rotateRight() (pivot *AvlNode[T]) {
 		pivot.balanceFactor = 0
 	}
 
-	//subtreeParent := root.Parent
 	root.Parent = pivot
-	//if subtreeParent == nil {
-	//	return
-	//}
-	//if subtreeParent.Left == root {
-	//	subtreeParent.Left = pivot
-	//	return
-	//}
-	//subtreeParent.Right = pivot
 	return
 }
 
@@ -253,7 +405,6 @@ func (root *AvlNode[T]) rotateLeftRight() (pivot *AvlNode[T]) {
 	// root is by 2 higher than its sibling
 	pivotRoot, pivot := root.Left, root.Left.Right
 	// 1 - Reorder nodes
-	//pivot.Parent = root.Parent
 	pivot.setPivotParent(root)
 	// y is by 1 higher than sibling
 	t2 := pivot.Left
@@ -295,7 +446,6 @@ func (root *AvlNode[T]) rotateRightLeft() (pivot *AvlNode[T]) {
 	// root is by 2 higher than its sibling
 	pivotRoot, pivot := root.Right, root.Right.Left
 	// 1 - Reorder nodes
-	//pivot.Parent = root.Parent
 	pivot.setPivotParent(root)
 	// y is by 1 higher than sibling
 	t2 := pivot.Left
@@ -337,18 +487,18 @@ func (t *AvlTree[T]) String() string {
 }
 
 func (node *AvlNode[T]) String() string {
-	var buffer bytes.Buffer
-	//var buffer safeBuffer
+	//var buffer bytes.Buffer
+	buffer := safeBuffer{}
 	node.string(&buffer, 0, 'M')
 	return buffer.String()
 }
 
-// func (node *AvlNode[T]) string(buffer *safeBuffer, spaces int, ch rune) {
-func (node *AvlNode[T]) string(buffer *bytes.Buffer, spaces int, ch rune) {
+// func (node *AvlNode[T]) string(buffer *bytes.Buffer, spaces int, ch rune) {
+func (node *AvlNode[T]) string(buffer *safeBuffer, spaces int, ch rune) {
 	if node == nil {
 		return
 	}
-	//buffer.mu.Lock()
+	buffer.mu.Lock()
 	for i := 0; i < spaces; i++ {
 		buffer.WriteByte(' ')
 	}
@@ -357,7 +507,7 @@ func (node *AvlNode[T]) string(buffer *bytes.Buffer, spaces int, ch rune) {
 	} else {
 		fmt.Fprintf(buffer, "%c:%v \t\tP:nil\tBF:%v\n", ch, node.Value, node.balanceFactor)
 	}
-	//buffer.mu.Unlock()
+	buffer.mu.Unlock()
 
 	node.Left.string(buffer, spaces+2, 'L')
 	node.Right.string(buffer, spaces+2, 'R')

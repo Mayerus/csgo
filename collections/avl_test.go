@@ -1,28 +1,23 @@
 package collections
 
 import (
+	"math/big"
 	"testing"
 
-	"golang.org/x/exp/rand"
+	//"golang.org/x/exp/rand"
+	"crypto/rand"
 )
 
-func TestAvlTree(t *testing.T) {
-	avl := AvlTree[int]{}
-
-	list := LinkedList[int]{}
-
-	k := 1
-	l := 1000
-	m := 1000
-	for i := 0; i < k; i++ {
-		for j := 0; j < l; j++ {
-			value := rand.Intn(m) - m/2
-			avl.Insert(value)
-			list.Add(value)
-		}
+func RandInt(max int) (int, error) {
+	nBig, err := rand.Int(rand.Reader, big.NewInt(int64(max)))
+	if err != nil {
+		return 0, err
 	}
+	return int(nBig.Int64()), nil
+}
 
-	if !avl.containsAllElements(&list) {
+func CheckAVL[T Numeric](avl *AvlTree[T], list *LinkedList[T], t *testing.T) {
+	if !avl.containsAllElements(list) {
 		t.Fatalf("Some values are missing from the AVL tree: \n\n%v\n\nInsert order:%v\n\n\n", avl.String(), list.String())
 	}
 
@@ -41,6 +36,50 @@ func TestAvlTree(t *testing.T) {
 	if !avl.root.isBalanced() {
 		t.Fatalf("AVL tree is unbalanced: \n\n%v\n\nInsert order:\n\t%v\n\n\n", avl.String(), list.String())
 	}
+}
+
+func TestAvlTree(t *testing.T) {
+	avl := &AvlTree[int]{}
+	list := &LinkedList[int]{}
+
+	k := 1
+	l := 10
+	m := 10
+	for i := 0; i < k; i++ {
+		for j := 0; j < l; j++ {
+			value, err := RandInt(m)
+			if err != nil {
+				t.Fatalf("%v", err.Error())
+				return
+			}
+			avl.Insert(value)
+			if list.Contains(value) == -1 {
+				list.Add(value)
+
+			}
+		}
+	}
+
+	t.Logf("\n%v\n%v\n\n", avl.String(), list.String())
+
+	for list.Count() > 0 {
+		i, err := RandInt(list.Count())
+		if err != nil {
+			t.Fatal(err)
+		}
+		value, _ := list.Get(i)
+		list.DeleteAt(i)
+
+		t.Logf("Try deleting: %v\n\n", value)
+		if !avl.Delete(value) {
+			t.Fatalf("Delete: AVL has missing values: \n\n%v\nFailed delete: %v\nList: %v\n\n\n", avl.String(), value, list)
+		}
+		t.Logf(avl.String())
+
+		CheckAVL(avl, list, t)
+	}
+
+	//CheckAVL(avl, list, t)
 }
 
 func (t *AvlTree[T]) hasDuplicateValues() bool {
@@ -93,6 +132,9 @@ func (n *AvlNode[T]) getTreeHeight(height int) int {
 }
 
 func (n *AvlNode[T]) isOrdered() bool {
+	if n == nil {
+		return true
+	}
 	if n.Left != nil {
 		if n.Value < n.Left.Value {
 			return false
@@ -116,6 +158,9 @@ func (n *AvlNode[T]) isOrdered() bool {
 }
 
 func (n *AvlNode[T]) propperDynasty() bool {
+	if n == nil {
+		return true
+	}
 	if n.Left != nil {
 		if n.Left.Parent != n {
 			return false

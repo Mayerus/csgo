@@ -113,7 +113,19 @@ func (l *LinkedList[T]) Get(index int) (T, error) {
 	return listIterator.data, nil
 }
 
-func (l *LinkedList[T]) Count(data T) int {
+// Returns the index of the first occurance of the specified value in the list.
+// If the value is not a member of the list, returns -1.
+func (l *LinkedList[T]) Contains(value T) int {
+	node := l.head
+	for i := 0; node != nil; i, node = i+1, node.next {
+		if node.data == value {
+			return i
+		}
+	}
+	return -1
+}
+
+func (l *LinkedList[T]) Count() int {
 	node := l.head
 	count := 0
 	for ; node != nil; node = node.next {
@@ -123,6 +135,9 @@ func (l *LinkedList[T]) Count(data T) int {
 }
 
 func (l *LinkedList[T]) String() string {
+	if l.head == nil {
+		return "[]"
+	}
 	output := "[" + fmt.Sprint(l.head.data)
 	node := l.head.next
 	for ; node != nil; node = node.next {
