@@ -29,12 +29,12 @@ func CheckAVL[T Numeric](avl *AvlTree[T], list *LinkedList[T], t *testing.T) {
 		t.Fatalf("AVL tree is unordered: \n\n%v\n\nInsert order:\n\t%v\n\n\n", avl.String(), list.String())
 	}
 
-	if !avl.root.propperDynasty() {
-		t.Fatalf("AVL tree has unpropper dynasty: \n\n%v\n\nInsert order:%v\n\n\n", avl.String(), list.String())
+	if proper, node := avl.root.propperDynasty(); !proper {
+		t.Fatalf("AVL tree has unpropper dynasty: \n\n%v\n\nInsert order:%v\n\nImpaired node:\n\n%v\n\n\n", avl.String(), list.String(), node.String())
 	}
 
-	if !avl.root.isBalanced() {
-		t.Fatalf("AVL tree is unbalanced: \n\n%v\n\nInsert order:\n\t%v\n\n\n", avl.String(), list.String())
+	if balanced, discrepancies := avl.root.isBalanced(); !balanced {
+		t.Fatalf("AVL tree is unbalanced: \n\n%v\n\nInsert order:\n\t%v\n\nDiscrepancies:\n\t%v\n\n\n", avl.String(), list.String(), discrepancies.String())
 	}
 }
 
@@ -43,8 +43,8 @@ func TestAvlTree(t *testing.T) {
 	list := &LinkedList[int]{}
 
 	k := 1
-	l := 10
-	m := 10
+	l := 20000
+	m := 50000
 	for i := 0; i < k; i++ {
 		for j := 0; j < l; j++ {
 			value, err := RandInt(m)
@@ -55,7 +55,6 @@ func TestAvlTree(t *testing.T) {
 			avl.Insert(value)
 			if list.Contains(value) == -1 {
 				list.Add(value)
-
 			}
 		}
 	}
@@ -74,7 +73,7 @@ func TestAvlTree(t *testing.T) {
 		if !avl.Delete(value) {
 			t.Fatalf("Delete: AVL has missing values: \n\n%v\nFailed delete: %v\nList: %v\n\n\n", avl.String(), value, list)
 		}
-		t.Logf(avl.String())
+		t.Logf("\n" + avl.String())
 
 		CheckAVL(avl, list, t)
 	}
@@ -99,7 +98,12 @@ func (n *AvlNode[T]) hasDuplicateValues(values *BSTree[T]) bool {
 	return n.Left.hasDuplicateValues(values) || n.Right.hasDuplicateValues(values)
 }
 
-func (n *AvlNode[T]) isBalanced() bool {
+func (n *AvlNode[T]) isBalanced() (bool, *LinkedList[T]) {
+	list := &LinkedList[T]{}
+	return n.isBalancedAuxilary(list), list
+}
+
+func (n *AvlNode[T]) isBalancedAuxilary(list *LinkedList[T]) bool {
 	if n == nil {
 		return true
 	}
@@ -109,10 +113,12 @@ func (n *AvlNode[T]) isBalanced() bool {
 	lHeight := n.Left.getTreeHeight(0)
 	rHeight := n.Right.getTreeHeight(0)
 	balanceFactor := lHeight - rHeight
-	if balanceFactor < -2 || balanceFactor > 2 {
+	if balanceFactor < -2 || balanceFactor > 2 || n.balanceFactor != int8(balanceFactor) {
+		list.Insert(n.Value)
 		return false
 	}
-	return n.Left.isBalanced() && n.Right.isBalanced()
+
+	return n.Left.isBalancedAuxilary(list) && n.Right.isBalancedAuxilary(list)
 }
 
 func (n *AvlNode[T]) getTreeHeight(height int) int {
@@ -157,29 +163,29 @@ func (n *AvlNode[T]) isOrdered() bool {
 	return true
 }
 
-func (n *AvlNode[T]) propperDynasty() bool {
+func (n *AvlNode[T]) propperDynasty() (bool, *AvlNode[T]) {
 	if n == nil {
-		return true
+		return true, nil
 	}
 	if n.Left != nil {
 		if n.Left.Parent != n {
-			return false
+			return false, n
 		}
-		if !n.Left.propperDynasty() {
-			return false
+		if proper, _ := n.Left.propperDynasty(); !proper {
+			return false, n
 		}
 	}
 
 	if n.Right != nil {
 		if n.Right.Parent != n {
-			return false
+			return false, n
 		}
-		if !n.Right.propperDynasty() {
-			return false
+		if proper, _ := n.Right.propperDynasty(); !proper {
+			return false, n
 		}
 	}
 
-	return true
+	return true, nil
 }
 
 func (t *AvlTree[T]) containsAllElements(list *LinkedList[T]) bool {
