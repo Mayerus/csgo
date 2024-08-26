@@ -40,8 +40,8 @@ func main() {
 
 	avl := &collections.AvlTree[int]{}
 	//list := &collections.LinkedList[int]{}
-	values := []int{8, 6, 13, 1, 12, 20, 19, 23}
-	delValues := []int{8}
+	values := []int{28, 32}
+	delValues := []int{28}
 	//k := 1
 	//l := 20
 	//m := 20

@@ -2,6 +2,7 @@ package collections
 
 import (
 	"bytes"
+	"cmp"
 	"fmt"
 
 	"golang.org/x/exp/constraints"
@@ -12,7 +13,7 @@ type Numeric interface {
 	constraints.Float | constraints.Integer
 }
 
-type TreeNode[T Numeric] struct {
+type TreeNode[T cmp.Ordered] struct {
 	Value               T
 	Left, Right, Parent *TreeNode[T]
 }

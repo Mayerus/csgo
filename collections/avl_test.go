@@ -1,12 +1,18 @@
 package collections
 
 import (
+	"cmp"
 	"math/big"
 	"testing"
 
 	//"golang.org/x/exp/rand"
 	"crypto/rand"
 )
+
+type deletion struct {
+	value int
+	tree  string
+}
 
 func RandInt(max int) (int, error) {
 	nBig, err := rand.Int(rand.Reader, big.NewInt(int64(max)))
@@ -16,8 +22,13 @@ func RandInt(max int) (int, error) {
 	return int(nBig.Int64()), nil
 }
 
-func CheckAVL[T Numeric](avl *AvlTree[T], list *LinkedList[T], t *testing.T) {
+func CheckAVL[T cmp.Ordered](avl *AvlTree[T], list *LinkedList[T], printList LinkedList[*deletion], t *testing.T) {
+
 	if !avl.containsAllElements(list) {
+		for i := 0; i < printList.Count(); i++ {
+			record, _ := printList.Get(i)
+			t.Logf("Try deleting: %v\n\n%v\n\n\n", record.value, record.tree)
+		}
 		t.Fatalf("Some values are missing from the AVL tree: \n\n%v\n\nInsert order:%v\n\n\n", avl.String(), list.String())
 	}
 
@@ -43,8 +54,8 @@ func TestAvlTree(t *testing.T) {
 	list := &LinkedList[int]{}
 
 	k := 1
-	l := 20000
-	m := 50000
+	l := 30000
+	m := 250000
 	for i := 0; i < k; i++ {
 		for j := 0; j < l; j++ {
 			value, err := RandInt(m)
@@ -59,7 +70,10 @@ func TestAvlTree(t *testing.T) {
 		}
 	}
 
-	t.Logf("\n%v\n%v\n\n", avl.String(), list.String())
+	//t.Logf("\n %v\n%v\n\n", avl.String(), list.String())
+
+	// print maximum of last 3 iterations
+	printList := &LinkedList[*deletion]{}
 
 	for list.Count() > 0 {
 		i, err := RandInt(list.Count())
@@ -69,13 +83,23 @@ func TestAvlTree(t *testing.T) {
 		value, _ := list.Get(i)
 		list.DeleteAt(i)
 
-		t.Logf("Try deleting: %v\n\n", value)
+		//t.Logf("Try deleting: %v\n\n", value)
 		if !avl.Delete(value) {
+			for i := 0; i < printList.Count(); i++ {
+				record, _ := printList.Get(i)
+				t.Logf("Try deleting: %v\n\n%v\n\n\n", record.value, record.tree)
+			}
+			t.Logf("Try deleting: %v\n\n", value)
 			t.Fatalf("Delete: AVL has missing values: \n\n%v\nFailed delete: %v\nList: %v\n\n\n", avl.String(), value, list)
 		}
-		t.Logf("\n" + avl.String())
+		//t.Logf("\n" + avl.String())
 
-		CheckAVL(avl, list, t)
+		//printList.Add(&deletion{value, avl.String()})
+		//if printList.Count() > 3 {
+		//	printList.DeleteAt(0)
+		//}
+
+		CheckAVL(avl, list, *printList, t)
 	}
 
 	//CheckAVL(avl, list, t)

@@ -1,7 +1,9 @@
 package collections
 
+import "cmp"
+
 // Binary Search Tree
-type BSTree[T Numeric] struct {
+type BSTree[T cmp.Ordered] struct {
 	root *TreeNode[T]
 }
 
@@ -144,7 +146,7 @@ func (t *BSTree[T]) ConSearch(value T, ch chan *TreeNode[T]) {
 	close(ch)
 }
 
-func conSearch[T Numeric](n *TreeNode[T], value T, ch chan *TreeNode[T]) {
+func conSearch[T cmp.Ordered](n *TreeNode[T], value T, ch chan *TreeNode[T]) {
 	if n == nil {
 		return
 	}

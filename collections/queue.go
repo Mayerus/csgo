@@ -1,6 +1,8 @@
 package collections
 
-import "errors"
+import (
+	"errors"
+)
 
 type Queuer[T any] interface {
 	Push(T)
