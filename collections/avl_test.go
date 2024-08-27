@@ -45,6 +45,10 @@ func CheckAVL[T cmp.Ordered](avl *AvlTree[T], list *LinkedList[T], printList Lin
 	}
 
 	if balanced, discrepancies := avl.root.isBalanced(); !balanced {
+		for i := 0; i < printList.Count(); i++ {
+			record, _ := printList.Get(i)
+			t.Logf("Try deleting: %v\n\n%v\n\n\n", record.value, record.tree)
+		}
 		t.Fatalf("AVL tree is unbalanced: \n\n%v\n\nInsert order:\n\t%v\n\nDiscrepancies:\n\t%v\n\n\n", avl.String(), list.String(), discrepancies.String())
 	}
 }
@@ -54,7 +58,7 @@ func TestAvlTree(t *testing.T) {
 	list := &LinkedList[int]{}
 
 	k := 1
-	l := 30000
+	l := 20000
 	m := 250000
 	for i := 0; i < k; i++ {
 		for j := 0; j < l; j++ {

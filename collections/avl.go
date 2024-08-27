@@ -217,87 +217,27 @@ func (t *AvlTree[T]) Delete(value T) bool {
 		return false
 	}
 
-	//pivot := t.deleteNode(t.root, value)
-	//if pivot != nil {
-	//	pivot.Parent = nil
-	//	t.root = pivot
-	//}
-	return t.deleteNodeIter(value)
-	return true
+	return t.deleteNode(value)
 }
 
-func (t *AvlTree[T]) deleteNode(node *AvlNode[T], value T) *AvlNode[T] {
-	// TODO: make the function iterative instead of recursive
-	if node == nil {
-		return nil
-	}
-	if value < node.Value {
-		node.Left = t.deleteNode(node.Left, value)
-		if node.Left != nil {
-			node.Left.Parent = node
-		}
-	} else if value > node.Value {
-		node.Right = t.deleteNode(node.Right, value)
-		if node.Right != nil {
-			node.Right.Parent = node
-		}
-	} else {
-		// Node with no child or one child
-		if node.Left == nil {
-			successor := node.Right
-			node.Dispose()
-			node = nil
-			return successor
-		} else if node.Right == nil {
-			successor := node.Left
-			node.Dispose()
-			node = nil
-			return successor
-		}
-		// Node with two children: Get the in-order successor (smallest in the right subtree)
-		successor := node.Successor()
-		node.Value = successor.Value
-
-		node.Right = t.deleteNode(node.Right, successor.Value)
-		if node.Right != nil {
-			node.Right.Parent = node
-		}
-	}
-
-	//if node == nil {
-	//	return nil
-	//}
-	t.updateSubtreeParent(node)
-
-	// balance node
-	return node.balanceDelete()
-}
-
-func (t *AvlTree[T]) deleteNodeIter( /*node *AvlNode[T],*/ value T) bool {
+func (t *AvlTree[T]) deleteNode(value T) bool {
 	if t.root == nil {
 		return false
 	}
 
 	stack := &Stack[*AvlNode[T]]{}
 	current := t.root
-	//callStack.Push(t.root)
 	var parent *AvlNode[T]
 
 	// traverse to the we wish to delete and push its ancestorial branch
-	for current != nil {
+	for !(current == nil || value == current.Value) {
+		stack.Push(current)
+		parent = current
 		if value < current.Value {
-			stack.Push(current)
-			parent = current
 			current = current.Left
 			continue
 		}
-		if value > current.Value {
-			stack.Push(current)
-			parent = current
-			current = current.Right
-			continue
-		}
-		break
+		current = current.Right
 	}
 
 	// return if no node corresponds to the given value
@@ -305,105 +245,104 @@ func (t *AvlTree[T]) deleteNodeIter( /*node *AvlNode[T],*/ value T) bool {
 		return false
 	}
 
-	// Leaf or a node with single child
-	if current.Left == nil || current.Right == nil {
-		if t.removeLeafOrSingleChildNode(current, parent) {
-			return true
-		}
-	} else {
-		remove2ChildrenNode(current, parent, stack)
-	}
+	quit, leftDeletion := t.removeNode(current, parent, stack)
 
 	// Balance the nodes on the path to the root
-	for !stack.Empty() {
+	for !(stack.Empty() || quit) {
 		current, _ = stack.Pop()
-		t.updateSubtreeParent(current)
-		current = current.balanceDelete()
+		current, quit = current.balanceDelete(leftDeletion)
+		if current.Parent != nil {
+			leftDeletion = current.Parent.Left == current
+		}
 		t.updateSubtreeParent(current)
 	}
-
 	return true
 }
 
-// Returns whether a rebalance is required or not
-func (t *AvlTree[T]) removeLeafOrSingleChildNode(node, parent *AvlNode[T]) bool {
+func (t *AvlTree[T]) removeNode(current, parent *AvlNode[T], stack *Stack[*AvlNode[T]]) (quit, leftDeletion bool) {
 	var successor *AvlNode[T]
-	if node.Left == nil {
-		successor = node.Right
-	} else {
-		successor = node.Left
-	}
 
-	if parent == nil {
-		// Deleting the root node with a single child
+	// Leaf or a node with single child
+	if current.Left == nil || current.Right == nil {
+		defer current.Dispose()
+
+		if current.Left == nil {
+			successor = current.Right
+		} else {
+			successor = current.Left
+		}
 		if successor != nil {
-			successor.Parent = nil
+			successor.Parent = parent
 		}
 
-		node.Dispose()
-		//if successor != nil {
-		t.updateSubtreeParent(successor)
-		//}
-		return true
-	}
+		if parent == nil {
+			// Deleting the root node with a single child
+			t.root = successor
+			return true, false
+		}
 
-	// Update parent's reference
-	if parent.Left == node {
-		parent.Left = successor
-	} else {
+		// Update parent's reference
+		if parent.Left == current {
+			parent.Left = successor
+			return false, true
+		}
 		parent.Right = successor
-	}
-	if successor != nil {
-		successor.Parent = parent
+		return false, false
 	}
 
-	node.Dispose()
-	return false
-}
-
-func remove2ChildrenNode[T cmp.Ordered](node, parent *AvlNode[T], stack *Stack[*AvlNode[T]]) {
-	stack.Push(node)
-	var successor *AvlNode[T]
-	for successor = node.Right; successor.Left != nil; successor = successor.Left {
+	stack.Push(current)
+	for successor = current.Right; successor.Left != nil; successor = successor.Left {
 		stack.Push(successor)
 	}
 
-	node.Value = successor.Value
-
+	current.Value = successor.Value
 	parent, _ = stack.Peek()
-	if parent.Left == successor {
-		parent.Left = successor.Right
-	} else {
-		parent.Right = successor.Right
-	}
 
 	if successor.Right != nil {
 		successor.Right.Parent = parent
 	}
+	defer successor.Dispose()
 
-	successor.Dispose()
+	leftDeletion = successor.Parent.Left == successor
+
+	if parent.Left == successor {
+		parent.Left = successor.Right
+		return false, leftDeletion
+	}
+	parent.Right = successor.Right
+	return false, leftDeletion
 }
 
 // Returns a balanced subtree with "node" being the original root
 // before the possible rebalance action
-func (node *AvlNode[T]) balanceDelete() *AvlNode[T] {
-	//TODO: consider using the existing balance factor?
-	// Update height and balance factor
-	node.balanceFactor = int8(node.Left.height() - node.Right.height())
+func (node *AvlNode[T]) balanceDelete(leftDeletion bool) (*AvlNode[T], bool) {
+	if leftDeletion {
+		node.balanceFactor--
+		if node.balanceFactor == -1 {
+			return node, true
+		}
+	} else {
+		node.balanceFactor++
+		if node.balanceFactor == 1 {
+			return node, true
+		}
+	}
 
 	if node.balanceFactor > 1 {
+		quit := node.Left.balanceFactor == 0
 		if node.Left.balanceFactor >= 0 {
-			return node.rotateRight()
+			return node.rotateRight(), quit
 		}
-		return node.rotateLeftRight()
+		return node.rotateLeftRight(), quit
 	}
 	if node.balanceFactor < -1 {
+		quit := node.Right.balanceFactor == 0
 		if node.Right.balanceFactor <= 0 {
-			return node.rotateLeft()
+			return node.rotateLeft(), quit
 		}
-		return node.rotateRightLeft()
+		return node.rotateRightLeft(), quit
 	}
-	return node
+	return node, false
 }
 
 //func Join[T Numeric](tL, tR *AvlTree[T], k T) (bool, *AvlTree[T]) {
