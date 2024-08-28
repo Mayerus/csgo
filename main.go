@@ -1,14 +1,43 @@
 package main
 
 import (
+	"crypto/rand"
 	"fmt"
+	"math/big"
 	"mayerus/csgo/collections"
 )
 
-func test(p1, p2 *collections.AvlTree[int]) {
-	p3 := *p1
-	*p1 = *p2
-	*p2 = p3
+func RandInt(max int) (int, error) {
+	nBig, err := rand.Int(rand.Reader, big.NewInt(int64(max)))
+	if err != nil {
+		return 0, err
+	}
+	return int(nBig.Int64()), nil
+}
+
+func propperDynasty(n *collections.AvlNode[int]) (bool, *collections.AvlNode[int]) {
+	if n == nil {
+		return true, nil
+	}
+	if n.Left != nil {
+		if n.Left.Parent != n {
+			return false, n
+		}
+		if proper, _ := propperDynasty(n.Left); !proper {
+			return false, n
+		}
+	}
+
+	if n.Right != nil {
+		if n.Right.Parent != n {
+			return false, n
+		}
+		if proper, _ := propperDynasty(n.Right); !proper {
+			return false, n
+		}
+	}
+
+	return true, nil
 }
 
 func main() {
@@ -39,19 +68,93 @@ func main() {
 	//fmt.Println(bst)
 
 	avl := &collections.AvlTree[int]{}
-	//list := &collections.LinkedList[int]{}
+	list := &collections.LinkedList[int]{}
+
+	l := 20
+	m := 50
+	for j := 0; j < l; j++ {
+		value, err := RandInt(m)
+		if err != nil {
+			panic(err.Error())
+		}
+		avl.Insert(value)
+		if list.Contains(value) == -1 {
+			list.Add(value)
+		}
+	}
+
+	index, err := RandInt(list.Count())
+	if err != nil {
+		panic(err)
+	}
+	wedge, _ := list.Get(index)
+	list.DeleteAt(index)
+
+	splitable, t1, t2 := avl.AvlSplit(wedge)
+
+	leftList, rightList := &collections.LinkedList[int]{}, &collections.LinkedList[int]{}
+
+	for i := 0; i < list.Count(); i++ {
+		value, _ := list.Get(i)
+		if value < wedge {
+			leftList.Add(value)
+			continue
+		}
+		if value > wedge {
+			rightList.Add(value)
+			continue
+		}
+	}
+
+	fmt.Printf("\table: %v\n\nt1:\n\n%s\n\nt2:\n\n%s\n\n\n", splitable, t1, t2)
+
+	//leftAvl := &collections.AvlTree[int]{}
+	//rightAvl := &collections.AvlTree[int]{}
+	//n := 2.0
+	//a := 2.0
+	//smallTreeSize := int(math.Pow(2, n-1) + 1)
+	//bigTreeSize := int(math.Pow(2, n-1+a) + 1)
+
+	/*
+		for i := 0; i < bigTreeSize; i++ {
+			leftAvl.Insert(i)
+		}
+		for i := bigTreeSize + 1; i < bigTreeSize+smallTreeSize+1; i++ {
+			rightAvl.Insert(i)
+		}
+
+		fmt.Println(leftAvl, "\n", rightAvl)
+		joined, joinedTree := collections.AvlJoin(leftAvl, rightAvl, bigTreeSize)
+
+		if joined {
+			fmt.Println(joinedTree)
+		}
+		propper, _ := propperDynasty(joinedTree.Search(bigTreeSize))
+		fmt.Printf("dynasty: %v\n", propper)
+		//*/
+
+	/*
+		for i := 0; i < smallTreeSize; i++ {
+			leftAvl.Insert(i)
+		}
+
+		for i := smallTreeSize + 1; i < bigTreeSize+smallTreeSize+1; i++ {
+			rightAvl.Insert(i)
+		}
+		fmt.Println(leftAvl, "\n", rightAvl)
+
+		joined, joinedTree := collections.AvlJoin(leftAvl, rightAvl, smallTreeSize)
+
+		if joined {
+			fmt.Println(joinedTree)
+		}
+		propper, _ := propperDynasty(joinedTree.Search(smallTreeSize))
+		fmt.Printf("dynasty: %v\n", propper)
+		//*/
+	return
+
 	values := []int{28, 32}
 	delValues := []int{28}
-	//k := 1
-	//l := 20
-	//m := 20
-	//for i := 0; i < k; i++ {
-	//	for j := 0; j < l; j++ {
-	//		value := rand.Intn(m) - m/2
-	//		avl.Insert(value)
-	//		list.Add(value)
-	//	}
-	//}
 
 	for _, v := range values {
 		avl.Insert(v)
@@ -65,13 +168,6 @@ func main() {
 		fmt.Println(result)
 		fmt.Println(avl)
 	}
-	//for list.Count() > 0 {
-	//	i := rand.Intn(list.Count())
-	//	value, _ := list.Get(i)
-	//	list.DeleteAt(value)
-	//	avl.Delete(value)
-	//	fmt.Println(avl)
-	//}
 
 	return
 	//bst.Delete(5)

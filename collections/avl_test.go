@@ -2,11 +2,17 @@ package collections
 
 import (
 	"cmp"
+	"math"
 	"math/big"
 	"testing"
 
 	//"golang.org/x/exp/rand"
 	"crypto/rand"
+)
+
+const (
+	MaxElements = 20
+	MaxValue    = 250000
 )
 
 type deletion struct {
@@ -22,12 +28,14 @@ func RandInt(max int) (int, error) {
 	return int(nBig.Int64()), nil
 }
 
-func CheckAVL[T cmp.Ordered](avl *AvlTree[T], list *LinkedList[T], printList LinkedList[*deletion], t *testing.T) {
+func CheckAVL[T cmp.Ordered](avl *AvlTree[T], list *LinkedList[T], printList *LinkedList[*deletion], t *testing.T) {
 
 	if !avl.containsAllElements(list) {
-		for i := 0; i < printList.Count(); i++ {
-			record, _ := printList.Get(i)
-			t.Logf("Try deleting: %v\n\n%v\n\n\n", record.value, record.tree)
+		if printList != nil {
+			for i := 0; i < printList.Count(); i++ {
+				record, _ := printList.Get(i)
+				t.Logf("Try deleting: %v\n\n%v\n\n\n", record.value, record.tree)
+			}
 		}
 		t.Fatalf("Some values are missing from the AVL tree: \n\n%v\n\nInsert order:%v\n\n\n", avl.String(), list.String())
 	}
@@ -40,29 +48,51 @@ func CheckAVL[T cmp.Ordered](avl *AvlTree[T], list *LinkedList[T], printList Lin
 		t.Fatalf("AVL tree is unordered: \n\n%v\n\nInsert order:\n\t%v\n\n\n", avl.String(), list.String())
 	}
 
-	if proper, node := avl.root.propperDynasty(); !proper {
-		t.Fatalf("AVL tree has unpropper dynasty: \n\n%v\n\nInsert order:%v\n\nImpaired node:\n\n%v\n\n\n", avl.String(), list.String(), node.String())
+	if !avl.root.propperDynasty(t) {
+		t.Fatalf("AVL tree has unpropper dynasty: \n\n%v\n\nInsert order:%v\n\n\n", avl.String(), list.String())
 	}
 
 	if balanced, discrepancies := avl.root.isBalanced(); !balanced {
-		for i := 0; i < printList.Count(); i++ {
-			record, _ := printList.Get(i)
-			t.Logf("Try deleting: %v\n\n%v\n\n\n", record.value, record.tree)
+		if printList != nil {
+			for i := 0; i < printList.Count(); i++ {
+				record, _ := printList.Get(i)
+				t.Logf("Try deleting: %v\n\n%v\n\n\n", record.value, record.tree)
+			}
 		}
 		t.Fatalf("AVL tree is unbalanced: \n\n%v\n\nInsert order:\n\t%v\n\nDiscrepancies:\n\t%v\n\n\n", avl.String(), list.String(), discrepancies.String())
 	}
 }
 
-func TestAvlTree(t *testing.T) {
+func TestAvlInsertion(t *testing.T) {
 	avl := &AvlTree[int]{}
 	list := &LinkedList[int]{}
 
 	k := 1
-	l := 20000
-	m := 250000
 	for i := 0; i < k; i++ {
-		for j := 0; j < l; j++ {
-			value, err := RandInt(m)
+		for j := 0; j < MaxElements; j++ {
+			value, err := RandInt(MaxValue)
+			if err != nil {
+				t.Fatalf("%v", err.Error())
+				return
+			}
+			avl.Insert(value)
+			if list.Contains(value) == -1 {
+				list.Add(value)
+			}
+		}
+	}
+
+	CheckAVL(avl, list, nil, t)
+}
+
+func TestAvlDeletion(t *testing.T) {
+	avl := &AvlTree[int]{}
+	list := &LinkedList[int]{}
+
+	k := 1
+	for i := 0; i < k; i++ {
+		for j := 0; j < MaxElements; j++ {
+			value, err := RandInt(MaxValue)
 			if err != nil {
 				t.Fatalf("%v", err.Error())
 				return
@@ -103,10 +133,127 @@ func TestAvlTree(t *testing.T) {
 		//	printList.DeleteAt(0)
 		//}
 
-		CheckAVL(avl, list, *printList, t)
+		CheckAVL(avl, list, printList, t)
+	}
+}
+
+func TestAvlRightJoin(t *testing.T) {
+	leftAvl := &AvlTree[int]{}
+	rightAvl := &AvlTree[int]{}
+
+	n := 5.0
+	a := 7.0
+
+	smallTreeSize := int(math.Pow(2, n-1) + 1)
+	bigTreeSize := int(math.Pow(2, n-1+a) + 1)
+
+	for i := 0; i < bigTreeSize; i++ {
+		leftAvl.Insert(i)
+	}
+	for i := bigTreeSize + 1; i < bigTreeSize+smallTreeSize+1; i++ {
+		rightAvl.Insert(i)
+	}
+	//t.Log("\n" + leftAvl.String())
+	//t.Log("\n" + rightAvl.String())
+
+	joined, joinedTree := AvlJoin(leftAvl, rightAvl, bigTreeSize)
+
+	if !joined {
+		t.Fatalf("AVL right join failed: \n\nLeft tree:\n\n%v\n\nRight tree:\n\n%v\n\n Join value: %v\n\n", leftAvl.String(), rightAvl.String(), bigTreeSize)
 	}
 
-	//CheckAVL(avl, list, t)
+	list := &LinkedList[int]{}
+	for i := 0; i < smallTreeSize+bigTreeSize+1; i++ {
+		list.Add(i)
+	}
+
+	emptyList := &LinkedList[*deletion]{}
+
+	CheckAVL(joinedTree, list, emptyList, t)
+}
+
+func TestAvlLeftJoin(t *testing.T) {
+	leftAvl := &AvlTree[int]{}
+	rightAvl := &AvlTree[int]{}
+
+	n := 5.0
+	a := 7.0
+
+	smallTreeSize := int(math.Pow(2, n-1) + 1)
+	bigTreeSize := int(math.Pow(2, n-1+a) + 1)
+
+	for i := 0; i < smallTreeSize; i++ {
+		leftAvl.Insert(i)
+	}
+
+	for i := smallTreeSize + 1; i < bigTreeSize+smallTreeSize+1; i++ {
+		rightAvl.Insert(i)
+	}
+	//t.Log("\n" + leftAvl.String())
+	//t.Log("\n" + rightAvl.String())
+
+	joined, joinedTree := AvlJoin(leftAvl, rightAvl, smallTreeSize)
+
+	if !joined {
+		t.Fatalf("AVL left join failed: \n\nLeft tree:\n\n%v\n\nRight tree:\n\n%v\n\n Join value: %v\n\n", leftAvl.String(), rightAvl.String(), smallTreeSize)
+	}
+
+	list := &LinkedList[int]{}
+	for i := 0; i < smallTreeSize+bigTreeSize+1; i++ {
+		list.Add(i)
+	}
+
+	emptyList := &LinkedList[*deletion]{}
+
+	CheckAVL(joinedTree, list, emptyList, t)
+}
+
+func TestAvlSplit(t *testing.T) {
+	avl := &AvlTree[int]{}
+	list := &LinkedList[int]{}
+
+	k := 1
+	for i := 0; i < k; i++ {
+		for j := 0; j < MaxElements; j++ {
+			value, err := RandInt(MaxValue)
+			if err != nil {
+				t.Fatalf("%v", err.Error())
+				return
+			}
+			avl.Insert(value)
+			if list.Contains(value) == -1 {
+				list.Add(value)
+			}
+		}
+	}
+
+	index, err := RandInt(list.Count())
+	if err != nil {
+		t.Fatal(err)
+	}
+	wedge, _ := list.Get(index)
+	list.DeleteAt(index)
+
+	splitable, t1, t2 := avl.AvlSplit(wedge)
+
+	leftList, rightList := &LinkedList[int]{}, &LinkedList[int]{}
+
+	for i := 0; i < list.Count(); i++ {
+		value, _ := list.Get(i)
+		if value < wedge {
+			leftList.Add(value)
+			continue
+		}
+		if value > wedge {
+			rightList.Add(value)
+			continue
+		}
+	}
+
+	t.Log("\nSplitable: ", splitable, "\n\nt1:\n\n", t1.String(), "\n\nt2:\n\n", t2.String(), "\n\n\n")
+
+	CheckAVL(t1, leftList, nil, t)
+	CheckAVL(t2, rightList, nil, t)
 }
 
 func (t *AvlTree[T]) hasDuplicateValues() bool {
@@ -191,29 +338,31 @@ func (n *AvlNode[T]) isOrdered() bool {
 	return true
 }
 
-func (n *AvlNode[T]) propperDynasty() (bool, *AvlNode[T]) {
+func (n *AvlNode[T]) propperDynasty(t *testing.T) bool {
 	if n == nil {
-		return true, nil
+		return true
 	}
 	if n.Left != nil {
 		if n.Left.Parent != n {
-			return false, n
+			t.Log("impropper: \n", n.Left.String(), "\n n: ", &n, "\n n.Left.parent: ", &n.Left.Parent, "\n\n")
+			return false
 		}
-		if proper, _ := n.Left.propperDynasty(); !proper {
-			return false, n
+		if !n.Left.propperDynasty(t) {
+			return false
 		}
 	}
 
 	if n.Right != nil {
 		if n.Right.Parent != n {
-			return false, n
+			t.Log("impropper: \n", n.Left.String(), "\n n: ", &n, "\n n.Right.parent: ", &n.Left.Parent)
+			return false
 		}
-		if proper, _ := n.Right.propperDynasty(); !proper {
-			return false, n
+		if !n.Right.propperDynasty(t) {
+			return false
 		}
 	}
 
-	return true, nil
+	return true
 }
 
 func (t *AvlTree[T]) containsAllElements(list *LinkedList[T]) bool {

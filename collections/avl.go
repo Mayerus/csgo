@@ -12,7 +12,6 @@ type AvlTree[T cmp.Ordered] struct {
 	root *AvlNode[T]
 }
 
-// type AvlNode[T Numeric] struct {
 type AvlNode[T cmp.Ordered] struct {
 	Value         T
 	Left, Right   *AvlNode[T]
@@ -345,80 +344,240 @@ func (node *AvlNode[T]) balanceDelete(leftDeletion bool) (*AvlNode[T], bool) {
 	return node, false
 }
 
-//func Join[T Numeric](tL, tR *AvlTree[T], k T) (bool, *AvlTree[T]) {
-//	if tL.Max().Value >= k || tR.Min().Value <= k {
-//		return false, nil
-//	}
-//
-//	if tL.Height() > tR.Height() {
-//		return true, joinRightAvl(tL, tR, k)
-//	}
-//	if tL.Height() < tR.Height() {
-//		return true, joinLefttAvl(tL, tR, k)
-//	}
-//
-//	root := &AvlNode[T]{Value: k,
-//		Left:          tL.root,
-//		Right:         tR.root,
-//		Parent:        nil,
-//		balanceFactor: 0,
-//	}
-//	tree := &AvlTree[T]{root}
-//	return true, tree
-//}
-//
-//func joinRightAvl[T Numeric](tL, tR *AvlTree[T], k T) *AvlTree[T] {
-//	// l, c, kTag := tL.root.Left, tL.root.Right, tL.Root.Value
-//	l, c, kTag := tL.expose()
-//	// stopping condition - if height difference is 1 at most (left may be heigher than right)
-//
-//	balanceFactor := tL.root.Right.height() - tR.Height()
-//	//if tL.root.Right.height() <= tR.Height()+1 {
-//	if balanceFactor <= 1 {
-//		joinRoot := &AvlNode[T]{Value: k,
-//			Left:          tL.root.Right,
-//			Right:         tR.root,
-//			balanceFactor: int8(balanceFactor),
-//		} // TODO: restructure properly
-//
-//		joinBF := joinRoot.height() - tL.root.Left.height()
-//
-//		//if joinRoot.height() <= tL.root.Left.height()+1 {
-//
-//		if joinBF <= 1 {
-//			joinRoot = &AvlNode[T]{Value: kTag,
-//				Left:          l,
-//				Right:         joinRoot,
-//				balanceFactor: int8(joinBF),
-//			}
-//			return &AvlTree[T]{root: joinRoot}
-//		}
-//		pivot := tTag.rotateRight()
-//		node := &AvlNode[T]{Value: kTag, Left: l, Right: pivot, balanceFactor: 0}
-//		return node.rotateLeft()
-//	}
-//	tTag := joinRightAvl(c, tR, k)
-//	tTagTag := &AvlNode[T]{Value: kTag, Left: l, Right: tTag} // restructure properly
-//	if tTag.Height() <= l.Height()+1 {
-//		return tTagTag
-//	}
-//	return tTagTag.rotateLeft()
-//}
-//
-//func (t *AvlTree[T]) expose() (l, r *AvlNode[T], k T) {
-//
-//}
-//func joinLeftAvl[T Numeric](tL, tR *AvlTree[T], k T) *AvlTree[T] {
-//
-//}
-//
-//func (t *AvlTree[T]) Split() {
-//	// TODO:
-//}
-//
-//func (t *AvlTree[T]) Union() {
-//	// TODO:
-//}
+func AvlJoin[T cmp.Ordered](tL, tR *AvlTree[T], k T) (bool, *AvlTree[T]) {
+	if tL == nil {
+		//tR.Insert(k)
+		//return true, tR
+		return false, nil
+	}
+	if tL.root == nil {
+		//tR.Insert(k)
+		//return true, tR
+		return false, nil
+	}
+	if tR == nil {
+		//tL.Insert(k)
+		//return true, tL
+		return false, nil
+	}
+	if tR.root == nil {
+		//tL.Insert(k)
+		//return true, tL
+		return false, nil
+	}
+
+	//a, b := tL.Max(), tR.Min()
+	//fmt.Print(a.Value, b.Value)
+
+	if tL.Max().Value >= k || tR.Min().Value <= k {
+		return false, nil
+	}
+
+	if tL.Height() > tR.Height() {
+		return true, joinRightAvl(tL.root, tR.root, k)
+	}
+	if tL.Height() < tR.Height() {
+		return true, joinLeftAvl(tL.root, tR.root, k)
+	}
+
+	root := &AvlNode[T]{Value: k,
+		Left:          tL.root,
+		Right:         tR.root,
+		Parent:        nil,
+		balanceFactor: 0,
+	}
+	tree := &AvlTree[T]{root}
+	return true, tree
+}
+
+func joinRightAvl[T cmp.Ordered](tL, tR *AvlNode[T], joinValue T) *AvlTree[T] {
+	pivotLeft, pivotRight, pivotValue := tL.Left, tL.Right, tL.Value
+
+	// stopping condition - if height difference is 1 at most (left may be heigher than right)
+	joinNodeBF := pivotRight.height() - tR.height()
+	if joinNodeBF <= 1 {
+		joinNode := &AvlNode[T]{
+			Value:         joinValue,
+			Left:          pivotRight,
+			Right:         tR,
+			balanceFactor: int8(joinNodeBF),
+		}
+		pivotRight.Parent = joinNode
+		tR.Parent = joinNode
+
+		joinRootBF := pivotLeft.height() - joinNode.height()
+		if joinRootBF >= -1 {
+			// height difference is 1 at most, complete the join
+			joinRoot := &AvlNode[T]{
+				Value:         pivotValue,
+				Left:          pivotLeft,
+				Right:         joinNode,
+				Parent:        nil,
+				balanceFactor: int8(joinRootBF),
+			}
+			joinNode.Parent = joinRoot
+			pivotLeft.Parent = joinRoot
+			return &AvlTree[T]{root: joinRoot}
+		}
+
+		joinNode = joinNode.rotateRightUnmodifiedTree()
+
+		// height difference is yet too great
+		joinRoot := &AvlNode[T]{
+			Value:         pivotValue,
+			Left:          pivotLeft,
+			Right:         joinNode,
+			Parent:        nil,
+			balanceFactor: int8(pivotLeft.height()) - int8(joinNode.height()),
+		}
+		pivotLeft.Parent = joinRoot
+		joinRoot.Right.Parent = joinRoot
+
+		return &AvlTree[T]{joinRoot.rotateLeftUnmodifiedTree()}
+	}
+
+	joinedRightTree := joinRightAvl(pivotRight, tR, joinValue)
+	joinedRoot := &AvlNode[T]{
+		Value:         pivotValue,
+		Left:          pivotLeft,
+		Right:         joinedRightTree.root,
+		balanceFactor: int8(pivotLeft.height()) - int8(joinedRightTree.Height()),
+	}
+	pivotLeft.Parent = joinedRoot
+	joinedRoot.Right.Parent = joinedRoot
+
+	if joinedRoot.balanceFactor >= -1 {
+		return &AvlTree[T]{joinedRoot}
+	}
+	return &AvlTree[T]{joinedRoot.rotateLeftUnmodifiedTree()}
+}
+
+func joinLeftAvl[T cmp.Ordered](tL, tR *AvlNode[T], joinValue T) *AvlTree[T] {
+	pivotLeft, pivotRight, pivotValue := tR.Left, tR.Right, tR.Value
+
+	// stopping condition - if height difference is 1 at most (right may be heigher than left)
+	joinNodeBF := tL.height() - pivotLeft.height()
+	if joinNodeBF >= -1 {
+		joinNode := &AvlNode[T]{
+			Value:         joinValue,
+			Left:          tL,
+			Right:         pivotLeft,
+			balanceFactor: int8(joinNodeBF),
+		}
+		tL.Parent = joinNode
+		pivotLeft.Parent = joinNode
+
+		joinRootBF := joinNode.height() - pivotRight.height()
+		if joinRootBF <= 1 {
+			// height difference is 1 at most, complete the join
+			joinRoot := &AvlNode[T]{
+				Value:         pivotValue,
+				Left:          joinNode,
+				Right:         pivotRight,
+				Parent:        nil,
+				balanceFactor: int8(joinRootBF),
+			}
+			joinNode.Parent = joinRoot
+			pivotRight.Parent = joinRoot
+			return &AvlTree[T]{root: joinRoot}
+		}
+
+		joinNode = joinNode.rotateLeftUnmodifiedTree()
+
+		// height difference is yet too great
+		joinRoot := &AvlNode[T]{
+			Value:         pivotValue,
+			Left:          joinNode,
+			Right:         pivotRight,
+			Parent:        nil,
+			balanceFactor: int8(joinNode.height()) - int8(pivotRight.height()),
+		}
+		joinRoot.Left.Parent = joinRoot
+		pivotRight.Parent = joinRoot
+
+		return &AvlTree[T]{joinRoot.rotateRightUnmodifiedTree()}
+	}
+
+	joinedLeftTree := joinLeftAvl(tL, pivotLeft, joinValue)
+	joinedRoot := &AvlNode[T]{
+		Value:         pivotValue,
+		Left:          joinedLeftTree.root,
+		Right:         pivotRight,
+		balanceFactor: int8(joinedLeftTree.Height()) - int8(pivotRight.height()),
+	}
+	joinedRoot.Left.Parent = joinedRoot
+	pivotRight.Parent = joinedRoot
+
+	if joinedRoot.balanceFactor <= 1 {
+		return &AvlTree[T]{joinedRoot}
+	}
+	return &AvlTree[T]{joinedRoot.rotateRightUnmodifiedTree()}
+}
+
+func (t *AvlTree[T]) AvlSplit(wedge T) (found bool, t1, t2 *AvlTree[T]) {
+	return t.root.AvlSplit(wedge)
+}
+
+func (t *AvlNode[T]) AvlSplit(wedge T) (found bool, t1, t2 *AvlTree[T]) {
+	if t == nil {
+		return false, nil, nil
+	}
+
+	leftSubtree, rootValue, rightSubtree := t.Left, t.Value, t.Right
+	if wedge < rootValue {
+		b, lTag, rTag := leftSubtree.AvlSplit(wedge)
+		if rightSubtree != nil {
+			rightSubtree.Parent = nil
+		}
+		_, joinedTree := AvlJoin(rTag, &AvlTree[T]{rightSubtree}, rootValue)
+		return b, lTag, joinedTree
+	}
+	if wedge > rootValue {
+		b, lTag, rTag := rightSubtree.AvlSplit(wedge)
+		if leftSubtree != nil {
+			leftSubtree.Parent = nil
+		}
+		_, joinedTree := AvlJoin(&AvlTree[T]{leftSubtree}, lTag, rootValue)
+		return b, joinedTree, rTag
+	}
+	if leftSubtree != nil {
+		leftSubtree.Parent = nil
+	}
+	if rightSubtree != nil {
+		rightSubtree.Parent = nil
+	}
+	return true, &AvlTree[T]{leftSubtree}, &AvlTree[T]{rightSubtree}
+}
+
+func AvlUnion[T cmp.Ordered](t1, t2 *AvlTree[T]) *AvlTree[T] {
+	//return avlUnion(t1.root, t2.root)
+
+	if t1 == nil {
+		return t2
+	}
+	if t1.root == nil {
+		return t2
+	}
+	if t2 == nil {
+		return t1
+	}
+	if t2.root == nil {
+		return t2
+	}
+	_, tL, tR := t2.AvlSplit(t1.root.Value)
+	if t1.root.Left != nil {
+		t1.root.Left.Parent = nil
+	}
+	if t1.root.Right != nil {
+		t1.root.Right.Parent = nil
+	}
+	_, union := AvlJoin(
+		AvlUnion(&AvlTree[T]{t1.root.Left}, &AvlTree[T]{tL.root}),
+		AvlUnion(&AvlTree[T]{t1.root.Right}, &AvlTree[T]{tR.root}),
+		t1.root.Value)
+	return union
+
+}
 
 // Sets pivot as the tree root if pivot.Parent is nil
 func (t *AvlTree[T]) updateSubtreeParent(pivot *AvlNode[T]) {
@@ -460,9 +619,11 @@ func (root *AvlNode[T]) rotateLeft() (pivot *AvlNode[T]) {
 	pivot.setPivotParent(root)
 
 	if pivot.balanceFactor == 0 {
+		// deletion balancing case
 		root.balanceFactor = -1
 		pivot.balanceFactor = 1
 	} else {
+		// insertion or deletion balancing case
 		root.balanceFactor = 0
 		pivot.balanceFactor = 0
 	}
@@ -577,6 +738,52 @@ func (root *AvlNode[T]) rotateRightLeft() (pivot *AvlNode[T]) {
 		pivotRoot.balanceFactor = 0
 	}
 	pivot.balanceFactor = 0
+	return
+}
+
+// Performs a left rotation on (root *AvlNode[T])'s subtree,
+// which makes (pivot *AvlNode[T]) the new subtree root
+func (root *AvlNode[T]) rotateLeftUnmodifiedTree() (pivot *AvlNode[T]) {
+	pivot = root.Right
+	innerChild := pivot.Left
+
+	root.Right = innerChild
+	if innerChild != nil {
+		// Reposition inner child: pivot.Left -> root.Right
+		innerChild.Parent = root
+	}
+
+	// set root as pivot's right child
+	pivot.Left = root
+	pivot.setPivotParent(root)
+
+	root.balanceFactor = root.balanceFactor + 1 - int8(math.Min(float64(pivot.balanceFactor), 0))
+	pivot.balanceFactor = pivot.balanceFactor + 1 + int8(math.Max(float64(root.balanceFactor), 0))
+
+	root.Parent = pivot
+	return
+}
+
+// Performs a right rotation on (root *AvlNode[T])'s subtree,
+// which makes (pivot *AvlNode[T]) the new subtree root
+func (root *AvlNode[T]) rotateRightUnmodifiedTree() (pivot *AvlNode[T]) {
+	pivot = root.Left
+	innerChild := pivot.Right
+
+	root.Left = innerChild
+	if innerChild != nil {
+		// Reposition inner child: pivot.Right -> root.Left
+		innerChild.Parent = root
+	}
+
+	// set root as pivot's right child
+	pivot.Right = root
+	pivot.setPivotParent(root)
+
+	root.balanceFactor = root.balanceFactor - 1 - int8(math.Max(float64(pivot.balanceFactor), 0))
+	pivot.balanceFactor = pivot.balanceFactor - 1 + int8(math.Min(float64(root.balanceFactor), 0))
+
+	root.Parent = pivot
 	return
 }
 
