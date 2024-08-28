@@ -26,10 +26,19 @@ func (q *Queue[T]) Pop() (T, error) {
 	return item, nil
 }
 
+func (q *Queue[T]) Peek() (T, error) {
+	var item T
+	if len(*q) == 0 {
+		return item, errors.New("Queue is empty")
+	}
+	item = (*q)[0]
+	return item, nil
+}
+
 func (q *Queue[T]) Count() int {
 	return len(*q)
 }
 
-func (q *Queue[T]) IsEmpty() bool {
+func (q *Queue[T]) Empty() bool {
 	return len(*q) == 0
 }
