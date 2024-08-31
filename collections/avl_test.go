@@ -12,7 +12,7 @@ import (
 
 const (
 	MaxElements = 20
-	MaxValue    = 250000
+	MaxValue    = 250
 )
 
 type deletion struct {
@@ -208,6 +208,17 @@ func TestAvlLeftJoin(t *testing.T) {
 	CheckAVL(joinedTree, list, emptyList, t)
 }
 
+func TestAvlJoin(t *testing.T) {
+	/* TODO: Implement the following algorithm:
+	1. Create the randomized AVL tree T
+	2. Mark T.root as k, k.Left as Tl.root and k.Right as Tr.root
+	3. Generate 2 random integers i, j whereas i <= Tl.Count() and j <= Tr.Count()
+	4. Remove i nodes from Tl and j nodes from Tr
+	5. Optional: log the rank difference between Tl and Tr
+	6. Run AvlJoin(Tl, Tr, k.Value)
+	*/
+}
+
 func TestAvlSplit(t *testing.T) {
 	avl := &AvlTree[int]{}
 	list := &LinkedList[int]{}
@@ -226,6 +237,7 @@ func TestAvlSplit(t *testing.T) {
 			}
 		}
 	}
+	t.Log("\n", avl, "\n")
 
 	index, err := RandInt(list.Count())
 	if err != nil {
@@ -250,7 +262,7 @@ func TestAvlSplit(t *testing.T) {
 		}
 	}
 
-	t.Log("\nSplitable: ", splitable, "\n\nt1:\n\n", t1.String(), "\n\nt2:\n\n", t2.String(), "\n\n\n")
+	t.Log("\nSplitable: ", splitable, "\n\nt1:\n", t1.String(), "\nt2:\n", t2.String(), "\n\n")
 
 	CheckAVL(t1, leftList, nil, t)
 	CheckAVL(t2, rightList, nil, t)

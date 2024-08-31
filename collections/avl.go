@@ -42,6 +42,9 @@ func (adopter *AvlNode[T]) Adopt(giver *AvlNode[T]) {
 }
 
 func (t *AvlTree[T]) Search(value T) (node *AvlNode[T]) {
+	if t == nil {
+		return nil
+	}
 	node = t.root
 	for node != nil && value != node.Value {
 		if value < node.Value {
@@ -89,7 +92,7 @@ func (tree *AvlTree[T]) Height() int {
 
 func (node *AvlNode[T]) height() int {
 	if node == nil {
-		return -1
+		return 0
 	}
 	return int(math.Max(float64(node.Left.height()), float64(node.Right.height()))) + 1
 }
@@ -402,7 +405,9 @@ func joinRightAvl[T cmp.Ordered](tL, tR *AvlNode[T], joinValue T) *AvlTree[T] {
 			Right:         tR,
 			balanceFactor: int8(joinNodeBF),
 		}
-		pivotRight.Parent = joinNode
+		if pivotRight != nil {
+			pivotRight.Parent = joinNode
+		}
 		tR.Parent = joinNode
 
 		joinRootBF := pivotLeft.height() - joinNode.height()
@@ -430,7 +435,9 @@ func joinRightAvl[T cmp.Ordered](tL, tR *AvlNode[T], joinValue T) *AvlTree[T] {
 			Parent:        nil,
 			balanceFactor: int8(pivotLeft.height()) - int8(joinNode.height()),
 		}
-		pivotLeft.Parent = joinRoot
+		if pivotLeft != nil {
+			pivotLeft.Parent = joinRoot
+		}
 		joinRoot.Right.Parent = joinRoot
 
 		return &AvlTree[T]{joinRoot.rotateLeftUnmodifiedTree()}
@@ -465,7 +472,9 @@ func joinLeftAvl[T cmp.Ordered](tL, tR *AvlNode[T], joinValue T) *AvlTree[T] {
 			balanceFactor: int8(joinNodeBF),
 		}
 		tL.Parent = joinNode
-		pivotLeft.Parent = joinNode
+		if pivotLeft != nil {
+			pivotLeft.Parent = joinNode
+		}
 
 		joinRootBF := joinNode.height() - pivotRight.height()
 		if joinRootBF <= 1 {
@@ -527,19 +536,27 @@ func (t *AvlNode[T]) AvlSplit(wedge T) (found bool, t1, t2 *AvlTree[T]) {
 	if wedge < rootValue {
 		b, lTag, rTag := leftSubtree.AvlSplit(wedge)
 		if rightSubtree != nil {
-			rightSubtree.Parent = nil
+			//rightSubtree.Parent = nil
 		}
-		_, joinedTree := AvlJoin(rTag, &AvlTree[T]{rightSubtree}, rootValue)
+		//fmt.Println("Split-AvlJoing(rTag: ", &rTag, ", rightSubtree: ", &rightSubtree, ", rootValue: ", rootValue, ")")
+		joined, joinedTree := AvlJoin(rTag, &AvlTree[T]{rightSubtree}, rootValue)
+		fmt.Println("joined wedge < rootValue?: ", joined)
 		return b, lTag, joinedTree
 	}
 	if wedge > rootValue {
 		b, lTag, rTag := rightSubtree.AvlSplit(wedge)
-		if leftSubtree != nil {
-			leftSubtree.Parent = nil
-		}
-		_, joinedTree := AvlJoin(&AvlTree[T]{leftSubtree}, lTag, rootValue)
+		//if leftSubtree != nil {
+		//	leftSubtree.Parent = nil
+		//}
+		//if leftSubtree.Parent != nil {
+		//
+		//}
+
+		joined, joinedTree := AvlJoin(&AvlTree[T]{leftSubtree}, lTag, rootValue)
+		fmt.Println("joined wedge > rootValue?: ", joined)
 		return b, joinedTree, rTag
 	}
+	fmt.Println("wedge == rootValue")
 	if leftSubtree != nil {
 		leftSubtree.Parent = nil
 	}
@@ -788,6 +805,9 @@ func (root *AvlNode[T]) rotateRightUnmodifiedTree() (pivot *AvlNode[T]) {
 }
 
 func (t *AvlTree[T]) String() string {
+	if t == nil {
+		return "<nil>"
+	}
 	return t.root.String()
 }
 

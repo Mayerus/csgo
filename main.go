@@ -70,6 +70,10 @@ func main() {
 	avl := &collections.AvlTree[int]{}
 	list := &collections.LinkedList[int]{}
 
+	//avl.Insert(1)
+	//avl.Insert(2)
+	//fmt.Println(avl.Height())
+	//return
 	l := 20
 	m := 50
 	for j := 0; j < l; j++ {
@@ -114,43 +118,6 @@ func main() {
 	//a := 2.0
 	//smallTreeSize := int(math.Pow(2, n-1) + 1)
 	//bigTreeSize := int(math.Pow(2, n-1+a) + 1)
-
-	/*
-		for i := 0; i < bigTreeSize; i++ {
-			leftAvl.Insert(i)
-		}
-		for i := bigTreeSize + 1; i < bigTreeSize+smallTreeSize+1; i++ {
-			rightAvl.Insert(i)
-		}
-
-		fmt.Println(leftAvl, "\n", rightAvl)
-		joined, joinedTree := collections.AvlJoin(leftAvl, rightAvl, bigTreeSize)
-
-		if joined {
-			fmt.Println(joinedTree)
-		}
-		propper, _ := propperDynasty(joinedTree.Search(bigTreeSize))
-		fmt.Printf("dynasty: %v\n", propper)
-		//*/
-
-	/*
-		for i := 0; i < smallTreeSize; i++ {
-			leftAvl.Insert(i)
-		}
-
-		for i := smallTreeSize + 1; i < bigTreeSize+smallTreeSize+1; i++ {
-			rightAvl.Insert(i)
-		}
-		fmt.Println(leftAvl, "\n", rightAvl)
-
-		joined, joinedTree := collections.AvlJoin(leftAvl, rightAvl, smallTreeSize)
-
-		if joined {
-			fmt.Println(joinedTree)
-		}
-		propper, _ := propperDynasty(joinedTree.Search(smallTreeSize))
-		fmt.Printf("dynasty: %v\n", propper)
-		//*/
 	return
 
 	values := []int{28, 32}
